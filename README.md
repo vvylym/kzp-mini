@@ -334,7 +334,7 @@ Index: [docs/README.md](docs/README.md).
 
 - Multisig pool administration
 - On-chain governance voting for defaults
-- Interest-bearing loans
+- Accrued yield on member savings (pool-level interest distribution)
 - Dynamic guarantee models (e.g. variable split)
 - Account migration support
 
