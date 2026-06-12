@@ -52,7 +52,7 @@ pub use error::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("6kf3ieibPCviUiySokEPmfxXP3dB7bW4eb9aof7sdkX2");
+declare_id!("GsjUnBFvYtcxNwCrydPUjQTngGTqdx5v7APnWahnqwkx");
 
 #[cfg(not(feature = "no-entrypoint"))]
 solana_security_txt::security_txt! {

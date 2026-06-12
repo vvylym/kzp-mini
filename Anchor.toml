@@ -1,28 +1,28 @@
 [toolchain]
-package_manager = "pnpm"
 anchor_version = "1.0.2"
+package_manager = "pnpm"
 
 [features]
 resolution = true
 skip-lint = false
 
-[programs.localnet]
-kzp_mini = "6kf3ieibPCviUiySokEPmfxXP3dB7bW4eb9aof7sdkX2"
-
 [programs.devnet]
-kzp_mini = "6kf3ieibPCviUiySokEPmfxXP3dB7bW4eb9aof7sdkX2"
+kzp_mini = "GsjUnBFvYtcxNwCrydPUjQTngGTqdx5v7APnWahnqwkx"
+
+[programs.localnet]
+kzp_mini = "GsjUnBFvYtcxNwCrydPUjQTngGTqdx5v7APnWahnqwkx"
 
 [programs.mainnet]
-kzp_mini = "6kf3ieibPCviUiySokEPmfxXP3dB7bW4eb9aof7sdkX2"
+kzp_mini = "GsjUnBFvYtcxNwCrydPUjQTngGTqdx5v7APnWahnqwkx"
 
 [provider]
 cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "cargo nextest --workspace"
-deploy-localnet = "bash scripts/deploy.sh localnet"
 deploy-devnet = "bash scripts/deploy.sh devnet"
+deploy-localnet = "bash scripts/deploy.sh localnet"
 deploy-mainnet = "bash scripts/deploy.sh mainnet"
+test = "cargo nextest --workspace"
 
 [hooks]
