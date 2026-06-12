@@ -75,13 +75,16 @@ jobs:
           NO_DNA=1 anchor keys sync
           NO_DNA=1 anchor build --ignore-keys
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+      - name: Stage and upload build artifacts
+        run: |
+          mkdir -p ci-artifact
+          cp target/deploy/kzp_mini.so ci-artifact/kzp_mini.so
+          cp programs/kzp-mini/src/lib.rs ci-artifact/lib.rs
+
+      - uses: actions/upload-artifact@v4
         with:
           name: kzp-mini-build
-          path: |
-            target/deploy/kzp_mini.so
-            programs/kzp-mini/src/lib.rs
+          path: ci-artifact
           retention-days: 7
 
   test:
