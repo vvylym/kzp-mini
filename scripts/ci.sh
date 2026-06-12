@@ -12,6 +12,8 @@ echo "==> clippy"
 cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 echo "==> anchor build"
+mkdir -p target/deploy
+cp -f keys/kzp_mini-keypair.json target/deploy/kzp_mini-keypair.json
 NO_DNA=1 anchor build --ignore-keys
 
 echo "==> unit + integration tests"

@@ -8,21 +8,24 @@ cd "$ROOT"
 
 RPC="https://api.devnet.solana.com"
 EXPLORER="https://explorer.solana.com/tx"
-PROGRAM_ID="6kf3ieibPCviUiySokEPmfxXP3dB7bW4eb9aof7sdkX2"
+KEYPAIR="$ROOT/keys/kzp_mini-keypair.json"
+PROGRAM_ID="$(solana address -k "$KEYPAIR")"
 POOL_NAME="SuperteamDemo"
 ENTRY_FEE=50
 DEPOSIT=1000000
 LOAN_AMOUNT=500000
 LOAN_NONCE=1
-DEMO_DIR="$(mktemp -d)"
-GA_WALLET="$DEMO_DIR/guarantor_a.json"
-GB_WALLET="$DEMO_DIR/guarantor_b.json"
-MINT_FILE="$DEMO_DIR/mint.txt"
+WALLETS_DIR="$ROOT/scripts/devnet-wallets"
+GA_WALLET="$WALLETS_DIR/guarantor_a.json"
+GB_WALLET="$WALLETS_DIR/guarantor_b.json"
+GUARANTOR_SOL=0.05
 
-cleanup() {
-  rm -rf "$DEMO_DIR"
-}
-trap cleanup EXIT
+mkdir -p "$WALLETS_DIR"
+for wallet in "$GA_WALLET" "$GB_WALLET"; do
+  if [[ ! -f "$wallet" ]]; then
+    solana-keygen new --no-bip39-passphrase -o "$wallet" --force >/dev/null
+  fi
+done
 
 kzp() {
   cargo run -q -p kzp-cli --release -- --cluster devnet "$@"
@@ -42,7 +45,18 @@ print_tx() {
   fi
 }
 
+fund_guarantor() {
+  local dest="$1"
+  local balance
+  balance=$(solana balance "$dest" --url "$RPC" | awk '{print $1}')
+  if awk "BEGIN {exit !($balance < $GUARANTOR_SOL)}"; then
+    solana transfer "$dest" "$GUARANTOR_SOL" --url "$RPC" --allow-unfunded-recipient >/dev/null
+  fi
+}
+
 echo "==> Building program and CLI"
+mkdir -p target/deploy
+cp -f "$KEYPAIR" target/deploy/kzp_mini-keypair.json
 NO_DNA=1 anchor build --ignore-keys
 cargo build -q -p kzp-cli --release
 
@@ -51,33 +65,35 @@ solana config set --url "$RPC" >/dev/null
 
 echo "==> Deploying program (skip if already live)"
 if ! solana program show "$PROGRAM_ID" --url "$RPC" >/dev/null 2>&1; then
+  BALANCE=$(solana balance --url "$RPC" | awk '{print $1}')
+  REQUIRED=2.85
+  if awk "BEGIN {exit !($BALANCE < $REQUIRED)}"; then
+    echo "ERROR: deploy needs ~${REQUIRED} SOL on devnet (wallet has ${BALANCE} SOL)." >&2
+    exit 1
+  fi
   bash scripts/deploy.sh devnet
 else
   echo "Program already deployed at $PROGRAM_ID"
 fi
 
-echo "==> Creating demo keypairs and SPL mint"
-solana-keygen new --no-bip39-passphrase -o "$GA_WALLET" --force >/dev/null
-solana-keygen new --no-bip39-passphrase -o "$GB_WALLET" --force >/dev/null
-
-for wallet in "$GA_WALLET" "$GB_WALLET"; do
-  solana airdrop 2 "$(solana-keygen pubkey "$wallet")" --url "$RPC" >/dev/null || true
-done
-
-MINT=$(spl-token create-token --url "$RPC" 2>&1 | awk '/Creating token/ {print $3}')
-echo "$MINT" >"$MINT_FILE"
+echo "==> Funding guarantor wallets from admin"
 ADMIN=$(solana address)
-spl-token create-account "$MINT" --url "$RPC" >/dev/null
-spl-token mint "$MINT" 10000000000 "$ADMIN" --url "$RPC" >/dev/null
+FEE_PAYER="${SOLANA_WALLET:-$HOME/.config/solana/id.json}"
+GA_PK=$(solana-keygen pubkey "$GA_WALLET")
+GB_PK=$(solana-keygen pubkey "$GB_WALLET")
+fund_guarantor "$GA_PK"
+fund_guarantor "$GB_PK"
+
+echo "==> Creating SPL mint and token accounts"
+MINT=$(spl-token create-token --decimals 6 --url "$RPC" --fee-payer "$FEE_PAYER" 2>&1 | awk '/^Address:/ {print $2}')
+spl-token create-account "$MINT" --owner "$ADMIN" --url "$RPC" --fee-payer "$FEE_PAYER" >/dev/null
+spl-token mint "$MINT" 1000000 --url "$RPC" --fee-payer "$FEE_PAYER" >/dev/null
 
 for wallet in "$GA_WALLET" "$GB_WALLET"; do
   pk=$(solana-keygen pubkey "$wallet")
-  spl-token create-account "$MINT" --owner "$pk" --url "$RPC" --fee-payer "$ADMIN" >/dev/null
-  spl-token mint "$MINT" 10000000000 "$pk" --url "$RPC" --fee-payer "$ADMIN" >/dev/null
+  spl-token create-account "$MINT" --owner "$pk" --url "$RPC" --fee-payer "$FEE_PAYER" >/dev/null
+  spl-token mint "$MINT" 1000000 --recipient-owner "$pk" --url "$RPC" --fee-payer "$FEE_PAYER" >/dev/null
 done
-
-GA_PK=$(solana-keygen pubkey "$GA_WALLET")
-GB_PK=$(solana-keygen pubkey "$GB_WALLET")
 
 declare -A TXS
 
