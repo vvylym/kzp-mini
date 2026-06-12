@@ -44,7 +44,10 @@ jobs:
         run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
       - name: Build program
-        run: NO_DNA=1 anchor build --ignore-keys
+        run: |
+          mkdir -p target/deploy
+          cp -f keys/kzp_mini-keypair.json target/deploy/kzp_mini-keypair.json
+          NO_DNA=1 anchor build --ignore-keys
 
       - name: Unit + integration tests
         run: cargo llvm-cov nextest --workspace --all-targets --all-features --summary-only
