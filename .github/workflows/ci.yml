@@ -26,7 +26,12 @@ jobs:
           echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
 
       - name: Install Anchor
-        run: cargo install --git https://github.com/coral-xyz/anchor avm --locked --force && avm install 1.0.2 && avm use 1.0.2
+        run: |
+          rustup toolchain install 1.91.0 --profile minimal
+          cargo +1.91.0 install --git https://github.com/coral-xyz/anchor avm --tag v1.0.2 --locked --force
+          avm install 1.0.2
+          avm use 1.0.2
+          echo "$HOME/.avm/bin" >> "$GITHUB_PATH"
 
       - name: Install cargo-nextest
         uses: taiki-e/install-action@nextest
