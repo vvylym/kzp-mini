@@ -1,0 +1,44 @@
+//! Accounts for [`crate::cancel_loan`].
+
+use anchor_lang::prelude::*;
+
+use crate::error::PoolError;
+use crate::state::{Loan, Member};
+use crate::utils::seeds::MEMBER_SEED;
+
+/// Accounts required for a borrower to cancel a pending loan.
+#[derive(Accounts)]
+pub struct CancelLoan<'info> {
+    /// Borrower wallet; receives closed loan account rent.
+    #[account(mut)]
+    pub borrower: Signer<'info>,
+
+    /// Pending loan to close (must belong to the borrower).
+    #[account(
+        mut,
+        close = borrower,
+        constraint = loan.borrower == borrower.key() @ PoolError::NotLoanBorrower,
+        constraint = loan.status == crate::state::LoanStatus::Pending @ PoolError::LoanNotPending,
+    )]
+    pub loan: Account<'info, Loan>,
+
+    /// Guarantor A member account (pending guarantee cleared).
+    #[account(
+        mut,
+        seeds = [MEMBER_SEED, loan.pool.as_ref(), loan.guarantor_a.as_ref()],
+        bump = guarantor_a_member.bump,
+        constraint = guarantor_a_member.owner == loan.guarantor_a,
+        constraint = guarantor_a_member.pool == loan.pool,
+    )]
+    pub guarantor_a_member: Box<Account<'info, Member>>,
+
+    /// Guarantor B member account (pending guarantee cleared).
+    #[account(
+        mut,
+        seeds = [MEMBER_SEED, loan.pool.as_ref(), loan.guarantor_b.as_ref()],
+        bump = guarantor_b_member.bump,
+        constraint = guarantor_b_member.owner == loan.guarantor_b,
+        constraint = guarantor_b_member.pool == loan.pool,
+    )]
+    pub guarantor_b_member: Box<Account<'info, Member>>,
+}
