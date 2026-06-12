@@ -3,10 +3,10 @@
 /// Declares an async integration test with [`TestApp`](crate::helpers::TestApp) and the module's `universe`.
 ///
 /// Expects a `Universe` struct and `universe` function (or variant) in the same module.
-/// Applies `#[tokio::test]` — do not add it yourself.
+/// Applies `#[tokio::test]` - do not add it yourself.
 ///
 /// Document each test with regular `//` comments (**Spec**, **Given**, **When**, **Then**) immediately
-/// above the macro invocation — doc comments (`///`) are not attached to the generated test fn.
+/// above the macro invocation - doc comments (`///`) are not attached to the generated test fn.
 ///
 /// # Examples
 ///

@@ -1,4 +1,4 @@
-# Keypairs (local only — never commit)
+# Keypairs (local only - never commit)
 
 All `*.json` files in this directory are **gitignored**. Do not push private keys to GitHub, even for devnet.
 

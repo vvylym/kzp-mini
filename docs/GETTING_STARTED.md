@@ -6,7 +6,7 @@ Install tools, build the program, deploy, and fund a devnet wallet. For a minima
 
 | Tool | Version / notes |
 |------|-----------------|
-| [Rust](https://rustup.rs/) | 1.89 (`rust-toolchain.toml`) — `rustfmt`, `clippy` |
+| [Rust](https://rustup.rs/) | 1.89 (`rust-toolchain.toml`) - `rustfmt`, `clippy` |
 | [Solana CLI](https://docs.anza.xyz/cli/install) | 3.x (Solana 4.x not supported) |
 | [Anchor](https://www.anchor-lang.com/docs/installation) | 1.0.2 (`avm install 1.0.2`) |
 | [pnpm](https://pnpm.io/) | Anchor workspace metadata |
@@ -31,7 +31,7 @@ cargo build -p kzp-cli --release
 export PATH="$PWD/target/release:$PATH"
 ```
 
-Program and demo keypairs live under `keys/` and are **not** in git — see [keys/README.md](../keys/README.md).
+Program and demo keypairs live under `keys/` and are **not** in git - see [keys/README.md](../keys/README.md).
 
 ## Deploy
 

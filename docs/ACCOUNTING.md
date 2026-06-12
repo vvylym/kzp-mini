@@ -4,8 +4,8 @@ KZP Mini tracks two parallel views of pool money: the **SPL vault** (actual toke
 
 ## Savings ledger
 
-- Each **Member** PDA holds `savings_balance` — withdrawable on `exit_pool`.
-- **Pool** PDA holds `total_savings` — sum of member savings balances.
+- Each **Member** PDA holds `savings_balance` - withdrawable on `exit_pool`.
+- **Pool** PDA holds `total_savings` - sum of member savings balances.
 - `deposit_savings` increases both member balance and `total_savings`.
 
 ## Vault accounting

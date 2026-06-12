@@ -12,7 +12,7 @@ Members:
 
 The protocol enforces financial mechanics on-chain while allowing membership policy and governance to remain off-chain. Built in Rust using [Anchor](https://www.anchor-lang.com/).
 
-> **Superteam Poland submission** — entry for [Build everyday real-world systems as on-chain Rust programs](https://superteam.fun/earn/listing/build-everyday-real-world-systems-as-on-chain-rust-programs) on [Superteam Earn](https://superteam.fun/earn).
+> **Superteam Poland submission** - entry for [Build everyday real-world systems as on-chain Rust programs](https://superteam.fun/earn/listing/build-everyday-real-world-systems-as-on-chain-rust-programs) on [Superteam Earn](https://superteam.fun/earn).
 
 **Repository:** [github.com/vvylym/kzp-mini](https://github.com/vvylym/kzp-mini)
 
@@ -137,7 +137,7 @@ NO_DNA=1 anchor build --ignore-keys
 cargo build -p kzp-cli --release
 ```
 
-Keypairs are local-only — see [keys/README.md](keys/README.md).
+Keypairs are local-only - see [keys/README.md](keys/README.md).
 
 ### Deploy
 
@@ -212,8 +212,8 @@ Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [docs/INSTRUCTIONS.md](
 
 Two parallel views:
 
-1. **SPL vault** — actual token balance
-2. **Ledger** — `pool.total_savings` and `member.savings_balance`
+1. **SPL vault** - actual token balance
+2. **Ledger** - `pool.total_savings` and `member.savings_balance`
 
 Entry fees fund the vault but not member savings (liquidity buffer). Disburse and exit are **fail-closed** if vault balance is insufficient.
 

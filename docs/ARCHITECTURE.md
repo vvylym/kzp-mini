@@ -61,7 +61,7 @@ Full account metas: [INSTRUCTIONS.md](./INSTRUCTIONS.md). Field layouts: [STATE.
 | Partial approval | `guarantor_*_signed` + `pending_guarantees` |
 | Disbursement | `co_sign_loan` CPI when vault ≥ principal |
 | Repayment | `repay_loan` CPI + counter updates |
-| Default | `settle_default` — 50/50 ledger + SPL from guarantors |
+| Default | `settle_default` - 50/50 ledger + SPL from guarantors |
 | Leave pool | `exit_pool` pays savings, closes PDA |
 
 ## Code layout
