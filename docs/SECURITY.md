@@ -1,6 +1,6 @@
 # Security
 
-Design context: [Architecture](../README.md#architecture). Instruction reference: [INSTRUCTIONS.md](./INSTRUCTIONS.md).
+Design context: [ARCHITECTURE.md](./ARCHITECTURE.md) · [ACCOUNTING.md](./ACCOUNTING.md). Instruction reference: [INSTRUCTIONS.md](./INSTRUCTIONS.md).
 
 ## Threat model
 

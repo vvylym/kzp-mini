@@ -1,15 +1,104 @@
-# KZP Minimal
+# KZP Mini
 
-On-chain workplace mutual-aid fund (Kasa Zapomogowa Pracownicza) on Solana. Members pay a one-time entry fee, deposit savings, request co-signed loans (two guarantors), repay, and exit when obligations are clear.
+KZP Mini is a Solana implementation of a workplace mutual-aid fund (*Kasa Zapomogowa Pracownicza*).
 
-> **Superteam Poland submission** — this repository is an entry for [Build everyday real-world systems as on-chain Rust programs](https://superteam.fun/earn/listing/build-everyday-real-world-systems-as-on-chain-rust-programs) on [Superteam Earn](https://superteam.fun/earn).
+Members:
 
-**Repository:** [github.com/vvylym/kzp-mini](https://github.com/vvylym/kzp-mini)  
-**Program ID (devnet):** `GsjUnBFvYtcxNwCrydPUjQTngGTqdx5v7APnWahnqwkx`
+- join a shared pool
+- deposit savings
+- request loans with two guarantors
+- repay obligations
+- withdraw savings and leave
 
-## Devnet demo
+The protocol enforces financial mechanics on-chain while allowing membership policy and governance to remain off-chain. Built in Rust using [Anchor](https://www.anchor-lang.com/).
 
-The program is deployed on devnet. A full pool lifecycle (initialize → join → deposit → loan → co-sign → repay → exit) was executed with the `kzp` CLI.
+> **Superteam Poland submission** — entry for [Build everyday real-world systems as on-chain Rust programs](https://superteam.fun/earn/listing/build-everyday-real-world-systems-as-on-chain-rust-programs) on [Superteam Earn](https://superteam.fun/earn).
+
+**Repository:** [github.com/vvylym/kzp-mini](https://github.com/vvylym/kzp-mini)
+
+## At a glance
+
+| Property | Value |
+|----------|-------|
+| Blockchain | Solana (devnet deployed) |
+| Language | Rust 1.89 |
+| Framework | Anchor 1.0.2 |
+| Loan model | Two guarantors, 3× savings cap |
+| Savings model | Shared SPL vault + ledger |
+| Client | `kzp` CLI |
+| License | MIT |
+
+---
+
+## Why KZP?
+
+Traditional workplace savings associations rely on spreadsheets, manual bookkeeping, paper signatures, and committee decisions. That creates opaque balances, delayed settlement, manual verification, and dispute risk.
+
+KZP Mini replaces **administrative coordination** with **on-chain enforcement**.
+
+| Concern | Traditional handling | Friction |
+|---------|---------------------|----------|
+| Membership | HR roster, payroll deductions | Manual roster upkeep |
+| Savings | Spreadsheet per member | Opaque balances |
+| Loans | Committee + verbal guarantees | Signatures disconnected from money |
+| Default | Social pressure, delayed settlement | No shared rule engine |
+| Exit | Manual “all clear” check | Error-prone |
+
+| Traditional concept | On-chain implementation |
+|---------------------|-------------------------|
+| Pool / cash box | **Pool** + **Vault** PDAs |
+| Member record | **Member** PDA |
+| Loan | **Loan** PDA (`Pending` → `Active` → `Repaid` / `Defaulted`) |
+| Two guarantors | Both must co-sign before disbursement |
+| Default | Admin `settle_default`; 50/50 guarantor liability |
+
+Deeper domain and mapping: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+---
+
+## Key features
+
+### Savings
+
+- One-time entry fee on join
+- Member deposits to shared vault
+- Per-member savings ledger
+
+### Lending
+
+- Loan requests with two nominated guarantors
+- Partial then full co-sign
+- Automatic disbursement when both guarantors approve
+
+### Risk controls
+
+- Loan cap at 3× member savings
+- One active loan per borrower
+- Up to five guarantees per member
+- Exit blocked while borrowing or guaranteeing
+
+### Administration
+
+- Pool initialization and SPL mint binding
+- Default settlement with guarantor SPL recovery
+
+---
+
+## Live devnet demo
+
+**Program ID:** `GsjUnBFvYtcxNwCrydPUjQTngGTqdx5v7APnWahnqwkx`
+
+### Verified lifecycle
+
+- [x] Deploy program
+- [x] Initialize pool
+- [x] Join members (admin + two guarantors)
+- [x] Deposit savings
+- [x] Request loan
+- [x] Co-sign (guarantor A, then B)
+- [x] Disburse principal
+- [x] Repay loan
+- [x] Exit pool
 
 | Step | Transaction |
 |------|-------------|
@@ -21,278 +110,245 @@ The program is deployed on devnet. A full pool lifecycle (initialize → join �
 | Deposit savings | [explorer](https://explorer.solana.com/tx/nEVmd3sxt3GPDCMp5LKMzSbEdijHLrBrfivDq298NkxbPMKm9sDtSU6oddrZe2Jjjeq5wA9PxQKKJcC2XDKymeT?cluster=devnet) |
 | Request loan | [explorer](https://explorer.solana.com/tx/2U4Xj4Z96Q9R2fuwnJgj2YGGi6rAWq8CZ99PAEniRwC9ms3witedtVH4XamszXaMYaTnF4rzYnS4fYotQRkcaSpc?cluster=devnet) |
 | Co-sign (guarantor A) | [explorer](https://explorer.solana.com/tx/487GaUXDizbkQx189kQ9JerCxBKhJDiR82WxsVnNBV6h35yJKBmyPcEqa2KLmgPTwNp4dYTqDEbjHte3sxxwXYBs?cluster=devnet) |
-| Co-sign + disburse (guarantor B) | [explorer](https://explorer.solana.com/tx/5d9rpicU6iWgEbQDYb6oVDemv4Vd6fNnqCF9Q3hEDKx1kiMp8XR7Zx2Edn59eDTerMgabcaMR2H7UK8f58q5s3Ni?cluster=devnet) |
+| Co-sign + disburse (B) | [explorer](https://explorer.solana.com/tx/5d9rpicU6iWgEbQDYb6oVDemv4Vd6fNnqCF9Q3hEDKx1kiMp8XR7Zx2Edn59eDTerMgabcaMR2H7UK8f58q5s3Ni?cluster=devnet) |
 | Repay loan | [explorer](https://explorer.solana.com/tx/3dHLmTDjhWkPsp3ruWUGqkLea5aazYgHn7siPUSHwycemdeiiwE7LJxP2o9ieRdQisCTdzsWSuGxCfKPPen6Hizp?cluster=devnet) |
 | Exit pool | [explorer](https://explorer.solana.com/tx/4yyvHNjit8M4gEwpWzXBJUAPeyEAVUXsAz4eZsrcLNEHU8CsX5rN8kWQcC8qXYh4TJkpwkuAomhmCr68UYmkG9AV?cluster=devnet) |
 
 **Demo accounts:** pool `4nZf8sPfRvKUucN43FirPQ3T3JvvkCo4LFukGYCRL7tg` · loan `toqwDKpVPAdHPkLSJWyh5yLdDTf7szVEKPRtVNek4bL` · mint `9CsRiEPkagzfTLTDhsBhuvfHNXupBugtHzy1wPefTi4V`
 
-Reproduce locally (requires a funded devnet wallet with ~3 SOL for first-time deploy):
-
 ```bash
-bash scripts/devnet-demo.sh
+bash scripts/devnet-demo.sh   # full scripted lifecycle
 ```
 
-## Installation
+---
 
-### Prerequisites
+## Quick start
 
-| Tool | Version / notes |
-|------|-----------------|
-| [Rust](https://rustup.rs/) | 1.89 (`rust-toolchain.toml`) — include `rustfmt`, `clippy`, and `llvm-tools-preview` |
-| [Solana CLI](https://docs.anza.xyz/cli/install) | 3.x |
-| [Anchor](https://www.anchor-lang.com/docs/installation) | 1.0.2 (`avm install 1.0.2`) |
-| [pnpm](https://pnpm.io/) | Anchor workspace metadata |
-| [cargo-nextest](https://nexte.st/) | `cargo install cargo-nextest --locked` |
+### Install
+
+Rust 1.89, Solana CLI 3.x, Anchor 1.0.2, cargo-nextest. Full toolchain notes: [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md).
+
+### Build
 
 ```bash
-# Rust components used by CI (format, lint, tests)
-rustup component add rustfmt clippy
-
-# Test runner (same stack as scripts/ci.sh and GitHub Actions)
-cargo install cargo-nextest --locked
-```
-
-Program and demo keypairs live under `keys/` and are **not** in git — see [keys/README.md](keys/README.md).
-
-Solana 4.x is not supported by the current dependency set.
-
-### Clone and build
-
-```bash
-# Clone the repository
-git clone https://github.com/vvylym/kzp-mini.git
-cd kzp-mini
-
-# Build the on-chain program
+git clone https://github.com/vvylym/kzp-mini.git && cd kzp-mini
+mkdir -p target/deploy && cp keys/program.json target/deploy/kzp_mini-keypair.json
 NO_DNA=1 anchor build --ignore-keys
-
-# Build the CLI (optional; or use cargo run -p kzp-cli --release --)
 cargo build -p kzp-cli --release
-export PATH="$PWD/target/release:$PATH"
 ```
 
-Deploy to a cluster when you need your own program instance (devnet is the default for the CLI):
+Keypairs are local-only — see [keys/README.md](keys/README.md).
+
+### Deploy
 
 ```bash
-bash scripts/deploy.sh devnet    # or localnet / mainnet
-```
-
-## Usage
-
-The `kzp` CLI talks to the on-chain program over RPC. **Every subcommand works on any cluster** — pass `--cluster localnet|devnet|mainnet` or `--rpc-url <URL>` to override the default.
-
-**Default cluster: devnet** (`https://api.devnet.solana.com`). Wallet: `~/.config/solana/id.json` unless `--wallet` is set.
-
-### Devnet setup
-
-After installation you still need a funded wallet, the program deployed at the ID above, and an SPL mint with tokens in member ATAs:
-
-```bash
-# Create a keypair if you do not have ~/.config/solana/id.json
-solana-keygen new
-
-# Point Solana CLI at devnet (optional; kzp already defaults to devnet RPC)
-solana config set --url devnet
-
-# Fund the wallet with devnet SOL for rent and fees
-solana airdrop 2
-
-# Deploy the program (skip if this program ID is already live on devnet)
-NO_DNA=1 anchor build --ignore-keys
 bash scripts/deploy.sh devnet
-
-# Create a devnet SPL mint and mint tokens to your ATA (save MINT for pool init)
-spl-token create-token
-spl-token create-account <MINT>
-spl-token mint <MINT> 1000000000
 ```
 
-Verify connectivity with `kzp config` (prints RPC URL, cluster, wallet, payer, and program ID).
-
-### Commands
-
-Replace `<MINT>`, `<POOL>`, `<LOAN>`, and pubkeys with values from your run. Amounts are in **base units** (smallest SPL denomination).
+### Verify
 
 ```bash
-# Confirm RPC URL, cluster, wallet, payer, and program ID
-kzp config
+cargo run -p kzp-cli --release -- config
+```
 
-# Admin: create pool + vault for an SPL mint (prints pool PDA)
-kzp pool initialize --name "Fabryka Lodz KZP" --entry-fee 50 --mint <MINT>
+---
 
-# Member: pay entry fee and open a member PDA (wallet must hold ≥ entry_fee tokens)
+## CLI usage
+
+Commands grouped by role. Full reference: [docs/CLI.md](docs/CLI.md).
+
+| Role | Commands |
+|------|----------|
+| **Pool administrator** | `pool initialize` · `loan settle-default` |
+| **Members** | `pool join` · `pool deposit` · `pool exit` |
+| **Borrowers** | `loan request` · `loan repay` · `loan cancel` |
+| **Guarantors** | `loan cosign` · `loan withdraw-cosign` |
+
+```bash
+kzp pool initialize --name "My Pool" --entry-fee 50 --mint <MINT>
 kzp pool join --pool <POOL> --entry-fee 50
-
-# Member: move tokens from your ATA into the pool vault; credits savings ledger
 kzp pool deposit --pool <POOL> --amount 1000000
-
-# Borrower: open a pending loan (needs two guarantor pubkeys who are already members)
-kzp loan request --pool <POOL> --nonce 1 --amount 500000 --guarantor-a <PUBKEY_A> --guarantor-b <PUBKEY_B>
-
-# Guarantor: co-sign pending loan (run twice, once per guarantor wallet; disburses on second sign)
+kzp loan request --pool <POOL> --nonce 1 --amount 500000 \
+  --guarantor-a <PUBKEY_A> --guarantor-b <PUBKEY_B>
 kzp loan cosign --loan <LOAN>
-
-# Borrower: repay principal to the vault (partial or full)
 kzp loan repay --loan <LOAN> --amount 500000
-
-# Borrower: cancel a loan still in Pending status
-kzp loan cancel --loan <LOAN>
-
-# Guarantor: revoke your partial co-sign while the loan is Pending
-kzp loan withdraw-cosign --loan <LOAN>
-
-# Admin (payer wallet) + both guarantors: settle default; wallet flags are keypair JSON paths
-kzp loan settle-default --loan <LOAN> --pool <POOL> --guarantor-a-wallet ~/.config/solana/guarantor_a.json --guarantor-b-wallet ~/.config/solana/guarantor_b.json
-
-# Member: withdraw savings and close member PDA (no active loan or guarantees)
 kzp pool exit --pool <POOL>
-
-# Simulate any command without sending (prints logs on failure)
-kzp --dry-run pool join --pool <POOL> --entry-fee 50
 ```
 
-**Other clusters:** append `--cluster localnet` (start `solana-test-validator` first) or `--cluster mainnet` (real SOL and tokens). **Other wallet:** `--wallet /path/to/keypair.json`.
+Global flags: `--cluster`, `--rpc-url`, `--wallet`, `--dry-run`.
 
-## Architecture
+---
 
-### Domain
-
-A **workplace mutual-aid pool** (KZP): coworkers save together and lend to each other with **social guarantee** — every loan requires **two guarantors** who accept partial liability if the borrower defaults.
-
-The program enforces membership, savings, loan limits (3× savings), co-sign before disbursement, repayment, cancellation, admin default settlement, and exit only when obligations are clear. **Who may join** and **when a default is justified** stay off-chain; on-chain code enforces **mechanics and fund safety**.
-
-### Traditional KZP: how the friction works
-
-In a typical employer-run or committee-run KZP:
-
-| Concern | Traditional handling |
-|---------|---------------------|
-| **Membership** | HR or a clerk maintains a roster; entry fees collected via payroll or cash |
-| **Savings** | Spreadsheet or ledger entry per member; physical cash or bank account balance |
-| **Loans** | Committee approves borrower + two guarantors; trust and workplace norms |
-| **Co-sign / guarantee** | Paper signatures or verbal agreement; no atomic link between “I guarantee” and money moving |
-| **Repayment** | Manual recording; disputes settled in meetings |
-| **Default** | Committee decides who pays; guarantors pressured socially; settlement may be partial or delayed |
-| **Exit** | Member must be “clear” on loans and guarantees — verified manually |
-
-Friction appears as **coordination cost** (meetings, chasing signatures), **opaque state** (who guaranteed what, is the cash box solvent?), and **dispute resolution** outside any shared rule engine. Nothing prevents disbursing more than the pool holds unless someone notices. Guarantors can be counted as obligated before funds actually move, or stuck informally after changing their mind.
-
-### On Solana: how this program maps it
-
-| Traditional concept | On-chain implementation |
-|---------------------|-------------------------|
-| Pool / cash box | **Pool** PDA + **vault** PDA holding SPL tokens |
-| Member record | **Member** PDA per wallet (`savings_balance`, obligations) |
-| Loan application | **Loan** PDA (`Pending` → `Active` → `Repaid` / `Defaulted`) |
-| Two guarantors | `guarantor_a` / `guarantor_b`; both must co-sign to disburse |
-| Partial approval | `guarantor_*_signed` flags + `pending_guarantees` before disbursement |
-| Disbursement | `co_sign_loan` CPI from vault to borrower ATA when both signed and vault ≥ principal |
-| Repayment | `repay_loan` CPI to vault; updates `outstanding` and pool counters |
-| Default | Admin-initiated `settle_default`; 50/50 ledger debit + guarantor SPL to vault (guarantors sign) |
-| Leave the pool | `exit_pool` pays `savings_balance` from vault and closes Member PDA |
-
-**PDAs:** Pool `["pool", admin, pool_name]` · Vault `["vault", pool]` · Member `["member", pool, owner]` · Loan `["loan", pool, borrower, loan_nonce_le]`. Helpers: `kzp_mini::utils::pda`.
-
-**Instructions (10):** `initialize_pool` · `join_pool` · `deposit_savings` · `request_loan` · `co_sign_loan` · `repay_loan` · `cancel_loan` · `withdraw_cosign` · `settle_default` · `exit_pool`. Details: [docs/INSTRUCTIONS.md](docs/INSTRUCTIONS.md).
-
-### Code layout
+## System architecture
 
 ```
-programs/kzp-mini/src/
-├── lib.rs              #[program] dispatch → handlers::*::handle
-├── state.rs            Pool, Member, Loan, LoanStatus
-├── instructions/       Anchor account constraints only
-├── handlers/           CPIs + state updates; one `handle` per instruction
-├── operations/         Pure rules/math (unit-tested)
-└── utils/              PDA seeds and helpers
+                    Pool PDA
+                        │
+                        ▼
+                   Vault PDA
+                        │
+        ┌───────────────┼───────────────┐
+        ▼               ▼               ▼
+   Member PDA      Member PDA      Member PDA
+        │
+        ▼
+    Loan PDA
 ```
 
-Handlers are split from `instructions/` so business rules in `operations/` can be tested without full Anchor contexts. The `instructions/withdraw_co_sign.rs` module name differs from the `withdraw_cosign` instruction name only at the file level.
+| Account | Purpose |
+|---------|---------|
+| **Pool** | Admin, mint, counters |
+| **Vault** | SPL token custody |
+| **Member** | Savings, loan/guarantee obligations |
+| **Loan** | Principal, guarantors, status |
 
-### Accounting: ledger vs vault
+**Instructions (10):** `initialize_pool` · `join_pool` · `deposit_savings` · `request_loan` · `co_sign_loan` · `repay_loan` · `cancel_loan` · `withdraw_cosign` · `settle_default` · `exit_pool`
 
-1. **SPL vault** — actual token balance in the vault PDA.
-2. **Ledger** — `pool.total_savings` and each `member.savings_balance`.
+Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [docs/INSTRUCTIONS.md](docs/INSTRUCTIONS.md) · [docs/STATE.md](docs/STATE.md)
 
-Entry fees go to the vault but **not** to member savings, leaving a small **liquidity buffer** for disburse → repay → exit cycles. `pool.total_outstanding_loans` is updated on disburse, repay, and default.
+---
 
-**Fail-closed checks:** `co_sign_loan` requires `vault.amount >= principal`; `exit_pool` requires `vault.amount >= savings_balance`. If ledger and vault diverge, exit is blocked rather than over-paying.
+## Financial model
 
-### Loan and guarantee lifecycle
+Two parallel views:
+
+1. **SPL vault** — actual token balance
+2. **Ledger** — `pool.total_savings` and `member.savings_balance`
+
+Entry fees fund the vault but not member savings (liquidity buffer). Disburse and exit are **fail-closed** if vault balance is insufficient.
+
+Full model: [docs/ACCOUNTING.md](docs/ACCOUNTING.md).
+
+---
+
+## Loan lifecycle
 
 ```
 Pending → Active → Repaid
                  ↘ Defaulted
-Pending → cancel_loan (account closed)
+Pending → cancel_loan
 ```
 
-**`pending_guarantees`** vs **`active_guarantees`:** partial co-sign only adds pending obligations; active guarantees are set after both co-signs and successful disbursement. That avoids locking guarantors for exit before money moves, and avoids treating them as fully liable while the loan is still pending.
+| State | Guarantor tracking | Escape hatches |
+|-------|-------------------|----------------|
+| Pending | `pending_guarantees` | Borrower: `cancel_loan` · Guarantor: `withdraw_cosign` |
+| Active | `active_guarantees` | Repay or admin `settle_default` |
+| Repaid / Defaulted | Cleared | Guarantors may exit when list empty |
 
-| Actor | Escape hatch while Pending |
-|-------|----------------------------|
-| Borrower | `cancel_loan` |
-| Guarantor | `withdraw_cosign` |
+---
 
-### Tradeoffs & constraints
+## Security & trust model
 
-| Topic | Choice | Implication |
-|-------|--------|-------------|
-| **Policy vs code** | Eligibility and default justification off-chain | Admin can call `settle_default` without on-chain proof of default; guarantors must still sign SPL transfers |
-| **Single admin** | One `pool.admin` | Simple ops; no multisig in this release |
-| **Default split** | 50/50 on outstanding (`div_ceil` for odd amounts) | Predictable guarantor liability; first guarantor pays the extra token on odd sums |
-| **Loan cap** | 3× savings, 5 guarantees/member, one active loan/borrower | Limits exposure; may block legitimate edge cases |
-| **Ledger vs vault** | Both tracked; exit/disburse fail-closed | Safer than spreadsheet drift; requires monitoring if counters diverge from reality |
-| **Pending loans** | Only borrower can `cancel_loan` | Abandoned pending loans keep the Loan PDA and pay rent until cancelled |
-| **Account upgrades** | No migration instruction | `Member` layout changes need a **fresh pool deploy**; devnet PDAs are not preserved across schema changes |
-| **Runtime limits** | BPF stack, account size | e.g. `Box<>` on `settle_default` accounts; `Member` guarantee vectors capped at 5 |
-| **Toolchain** | Rust 1.89, Anchor 1.0.2, Solana 3.x | Solana 4.x not supported by current dependencies |
-| **Testing** | `operations/` unit tests + 46 `solana-program-test` integration tests | Specs in [docs/USE_CASES.md](docs/USE_CASES.md); conventions in [tests/README.md](tests/README.md) |
+### Enforced on-chain
 
-Full threat model and mitigations: [docs/SECURITY.md](docs/SECURITY.md). Account field reference: [docs/STATE.md](docs/STATE.md).
+- Membership and savings state
+- Loan limits and guarantor rules
+- Co-sign before disbursement
+- Vault liquidity checks
+- Arithmetic safety (`checked_add` / `checked_sub`)
 
-## Documentation
+### Off-chain / trusted
 
-| Document | Contents |
-|----------|----------|
-| [docs/README.md](docs/README.md) | Doc index and quick reference |
-| [docs/INSTRUCTIONS.md](docs/INSTRUCTIONS.md) | All instructions and accounts |
-| [docs/STATE.md](docs/STATE.md) | Pool, Member, Loan layouts |
-| [docs/USE_CASES.md](docs/USE_CASES.md) | BDD acceptance criteria |
-| [docs/ERRORS.md](docs/ERRORS.md) | Error codes |
-| [docs/SECURITY.md](docs/SECURITY.md) | Threat model and mitigations |
-| [tests/README.md](tests/README.md) | Integration tests |
+- Who may join the pool (workplace policy)
+- Whether a default is justified (admin judgment)
+- SPL mint legitimacy at pool creation
 
-## Contributing
+Full threat model: [docs/SECURITY.md](docs/SECURITY.md).
 
-Run the full local CI before opening a pull request:
+---
+
+## Project structure
+
+```
+programs/kzp-mini/src/
+├── instructions/   Anchor account constraints
+├── handlers/       CPIs + state updates
+├── operations/     Pure business rules (unit-tested)
+├── state.rs        Pool, Member, Loan
+└── utils/          PDA helpers
+
+cli/                kzp command-line client
+tests/              solana-program-test integration suite
+docs/               Architecture, CLI, accounting, security
+scripts/            ci.sh, deploy.sh, devnet-demo.sh
+keys/               Local keypairs (gitignored)
+```
+
+**Philosophy:** `instructions` = validation · `handlers` = orchestration · `operations` = testable rules without Anchor contexts.
+
+---
+
+## Testing
+
+| Layer | Coverage |
+|-------|----------|
+| Unit tests | `programs/kzp-mini/src/operations/` |
+| Integration | 46 `solana-program-test` scenarios |
+| Specs | BDD criteria in [docs/USE_CASES.md](docs/USE_CASES.md) |
 
 ```bash
-# Format, clippy, nextest, anchor build, CLI smoke test
 bash scripts/ci.sh
 ```
 
-Individual steps:
+Conventions: [tests/README.md](tests/README.md).
+
+---
+
+## Documentation
+
+| Document | Audience | Purpose |
+|----------|----------|---------|
+| [README.md](README.md) | Everyone | Overview and navigation |
+| [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) | Developers | Install, deploy, devnet setup |
+| [docs/CLI.md](docs/CLI.md) | Operators | Full CLI by role |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Reviewers | Accounts, instructions, mapping |
+| [docs/ACCOUNTING.md](docs/ACCOUNTING.md) | Auditors | Ledger vs vault, limits |
+| [docs/SECURITY.md](docs/SECURITY.md) | Auditors | Threat model |
+| [docs/INSTRUCTIONS.md](docs/INSTRUCTIONS.md) | Integrators | Instruction account metas |
+| [docs/STATE.md](docs/STATE.md) | Integrators | Account layouts |
+| [docs/USE_CASES.md](docs/USE_CASES.md) | Contributors | Acceptance criteria |
+| [docs/ERRORS.md](docs/ERRORS.md) | Integrators | Error codes |
+
+Index: [docs/README.md](docs/README.md).
+
+---
+
+## Limitations & tradeoffs
+
+| Topic | Choice | Implication |
+|-------|--------|-------------|
+| Policy vs code | Eligibility off-chain | Admin can `settle_default` without on-chain proof |
+| Single admin | One `pool.admin` | No multisig in this release |
+| Default split | 50/50 (`div_ceil` on odd amounts) | First guarantor pays extra token on odd sums |
+| Loan cap | 3× savings, 5 guarantees | May block edge cases |
+| Ledger vs vault | Both tracked; fail-closed exit/disburse | Safer; monitor for drift |
+| Pending loans | Only borrower can cancel | Abandoned PDAs pay rent until cancelled |
+| Upgrades | No migration instruction | Schema changes need fresh pool deploy |
+| Toolchain | Rust 1.89, Anchor 1.0.2, Solana 3.x | Solana 4.x unsupported |
+
+---
+
+## Roadmap
+
+### Planned
+
+- Multisig pool administration
+- On-chain governance voting for defaults
+- Interest-bearing loans
+- Dynamic guarantee models (e.g. variable split)
+- Account migration support
+
+---
+
+## Contributing
 
 ```bash
-# Format check
-cargo fmt --all -- --check
-
-# Lint
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-
-# Build program first (integration tests need target/deploy/kzp_mini.so)
-mkdir -p target/deploy && cp keys/program.json target/deploy/kzp_mini-keypair.json
-NO_DNA=1 anchor build --ignore-keys
-
-# Tests (nextest)
-cargo nextest run --workspace --all-targets --all-features
-
-# Anchor test alias (runs nextest via Anchor.toml)
-anchor test
+bash scripts/ci.sh
 ```
 
-Integration tests use `solana-program-test` and must run with a single thread when invoked directly (`cargo nextest` handles workspace scheduling; see [tests/README.md](tests/README.md)). Business rules in `programs/kzp-mini/src/operations/` should stay unit-tested; acceptance criteria live in [docs/USE_CASES.md](docs/USE_CASES.md).
+Before opening a PR: `cargo fmt`, `cargo clippy`, `cargo nextest`, `anchor build`. See [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) for toolchain details.
+
+---
 
 ## License
 

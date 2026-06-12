@@ -1,38 +1,39 @@
-# KZP Minimal — Documentation
+# Documentation index
 
-On-chain workplace mutual-aid pool (Kasa Zapomogowa Pracownicza) on Solana.
+**Program ID (devnet):** `GsjUnBFvYtcxNwCrydPUjQTngGTqdx5v7APnWahnqwkx`
 
-**Program ID:** `GsjUnBFvYtcxNwCrydPUjQTngGTqdx5v7APnWahnqwkx`
+Start with the [root README](../README.md) for overview and navigation.
 
-**Architecture** (traditional KZP vs Solana, code layout, tradeoffs): see the [root README](../README.md#architecture).
+## By audience
 
-## Contents
+| You are… | Start here |
+|----------|------------|
+| Hackathon judge | [README § Live devnet demo](../README.md#live-devnet-demo) |
+| Solana developer | [GETTING_STARTED.md](./GETTING_STARTED.md) → [CLI.md](./CLI.md) |
+| Security reviewer | [SECURITY.md](./SECURITY.md) → [ACCOUNTING.md](./ACCOUNTING.md) |
+| Contributor | [ARCHITECTURE.md](./ARCHITECTURE.md) → [USE_CASES.md](./USE_CASES.md) |
 
-| Document | Description |
-|----------|-------------|
-| [INSTRUCTIONS.md](./INSTRUCTIONS.md) | All instructions and account requirements |
-| [STATE.md](./STATE.md) | On-chain account layouts and lifecycle |
-| [ERRORS.md](./ERRORS.md) | Custom `PoolError` codes |
-| [USE_CASES.md](./USE_CASES.md) | BDD use cases and acceptance criteria |
-| [SECURITY.md](./SECURITY.md) | Threat model, mitigations, and accepted limitations |
-| [../tests/README.md](../tests/README.md) | Integration test layout and conventions |
+## Reference
+
+| Document | Purpose |
+|----------|---------|
+| [GETTING_STARTED.md](./GETTING_STARTED.md) | Install, build, deploy, devnet wallet |
+| [CLI.md](./CLI.md) | Full `kzp` command reference by role |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | Accounts, instructions, traditional mapping |
+| [ACCOUNTING.md](./ACCOUNTING.md) | Ledger vs vault, limits, default split |
+| [INSTRUCTIONS.md](./INSTRUCTIONS.md) | Instruction account metas |
+| [STATE.md](./STATE.md) | On-chain account layouts |
+| [SECURITY.md](./SECURITY.md) | Threat model and mitigations |
+| [USE_CASES.md](./USE_CASES.md) | BDD acceptance criteria |
+| [ERRORS.md](./ERRORS.md) | `PoolError` codes |
+| [../tests/README.md](../tests/README.md) | Integration test conventions |
+| [../keys/README.md](../keys/README.md) | Local keypair layout |
 
 ## Quick reference
 
 ### Instructions
 
-| Instruction | Purpose |
-|-------------|---------|
-| `initialize_pool` | Admin creates pool + SPL token vault |
-| `join_pool` | Pay entry fee, open member PDA |
-| `deposit_savings` | Credit member savings ledger; tokens to vault |
-| `request_loan` | Open pending loan (max 3× savings, two guarantors) |
-| `co_sign_loan` | Guarantor co-signs; disburses when both sign |
-| `repay_loan` | Partial or full repayment to vault |
-| `cancel_loan` | Borrower cancels pending loan |
-| `withdraw_cosign` | Guarantor revokes partial co-sign |
-| `settle_default` | Admin default; 50/50 from guarantor savings + SPL to vault |
-| `exit_pool` | Withdraw savings and close member PDA |
+`initialize_pool` · `join_pool` · `deposit_savings` · `request_loan` · `co_sign_loan` · `repay_loan` · `cancel_loan` · `withdraw_cosign` · `settle_default` · `exit_pool`
 
 ### PDAs
 
@@ -42,17 +43,3 @@ On-chain workplace mutual-aid pool (Kasa Zapomogowa Pracownicza) on Solana.
 | Vault | `["vault", pool]` |
 | Member | `["member", pool, owner]` |
 | Loan | `["loan", pool, borrower, loan_nonce_le]` |
-
-Off-chain helpers: `kzp_mini::utils::pda::{pool_pda, vault_pda, member_pda, loan_pda}`.
-
-### Repository layout
-
-```
-programs/kzp-mini/   Anchor program (on-chain)
-tests/               Integration tests (solana-program-test)
-cli/                 `kzp` CLI for devnet/localnet
-scripts/             ci.sh, deploy.sh
-docs/                Instruction, state, security reference
-```
-
-Install, CLI usage, and contributing: see the [root README](../README.md).
