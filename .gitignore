@@ -6,4 +6,3 @@ node_modules
 test-ledger
 .vscode/
 .cargo/
-.idea/
