@@ -2,7 +2,7 @@
 
 On-chain workplace mutual-aid pool (Kasa Zapomogowa Pracownicza) on Solana.
 
-**Program ID:** `6kf3ieibPCviUiySokEPmfxXP3dB7bW4eb9aof7sdkX2`
+**Program ID:** `GsjUnBFvYtcxNwCrydPUjQTngGTqdx5v7APnWahnqwkx`
 
 **Architecture** (traditional KZP vs Solana, code layout, tradeoffs): see the [root README](../README.md#architecture).
 
