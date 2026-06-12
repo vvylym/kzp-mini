@@ -58,4 +58,7 @@ jobs:
         run: cargo llvm-cov nextest --workspace --all-targets --all-features --summary-only
 
       - name: CLI smoke test
-        run: cargo run -p kzp-cli -- config
+        run: |
+          mkdir -p "$HOME/.config/solana"
+          solana-keygen new -o "$HOME/.config/solana/id.json" --no-bip39-passphrase --force
+          cargo run -p kzp-cli -- config
