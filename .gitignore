@@ -6,4 +6,4 @@ node_modules
 test-ledger
 .vscode/
 .cargo/
-scripts/devnet-wallets/
+keys/**/*.json

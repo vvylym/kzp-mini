@@ -8,17 +8,22 @@ cd "$ROOT"
 
 RPC="https://api.devnet.solana.com"
 EXPLORER="https://explorer.solana.com/tx"
-KEYPAIR="$ROOT/keys/kzp_mini-keypair.json"
-PROGRAM_ID="$(solana address -k "$KEYPAIR")"
+PROGRAM_KEYPAIR="$ROOT/keys/program.json"
+PROGRAM_ID="$(solana address -k "$PROGRAM_KEYPAIR")"
 POOL_NAME="SuperteamDemo"
 ENTRY_FEE=50
 DEPOSIT=1000000
 LOAN_AMOUNT=500000
 LOAN_NONCE=1
-WALLETS_DIR="$ROOT/scripts/devnet-wallets"
+WALLETS_DIR="$ROOT/keys/devnet"
 GA_WALLET="$WALLETS_DIR/guarantor_a.json"
 GB_WALLET="$WALLETS_DIR/guarantor_b.json"
 GUARANTOR_SOL=0.05
+
+if [[ ! -f "$PROGRAM_KEYPAIR" ]]; then
+  echo "ERROR: missing $PROGRAM_KEYPAIR (see keys/README.md)" >&2
+  exit 1
+fi
 
 mkdir -p "$WALLETS_DIR"
 for wallet in "$GA_WALLET" "$GB_WALLET"; do
@@ -56,7 +61,7 @@ fund_guarantor() {
 
 echo "==> Building program and CLI"
 mkdir -p target/deploy
-cp -f "$KEYPAIR" target/deploy/kzp_mini-keypair.json
+cp -f "$PROGRAM_KEYPAIR" target/deploy/kzp_mini-keypair.json
 NO_DNA=1 anchor build --ignore-keys
 cargo build -q -p kzp-cli --release
 
