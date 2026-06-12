@@ -44,16 +44,16 @@ bash scripts/devnet-demo.sh
 | [Anchor](https://www.anchor-lang.com/docs/installation) | 1.0.2 (`avm install 1.0.2`) |
 | [pnpm](https://pnpm.io/) | Anchor workspace metadata |
 | [cargo-nextest](https://nexte.st/) | `cargo install cargo-nextest --locked` |
-| [cargo-llvm-cov](https://github.com/taiki-e/cargo-llvm-cov) | `cargo install cargo-llvm-cov --locked` (requires `llvm-tools-preview`) |
 
 ```bash
-# Rust components used by CI (format, lint, coverage)
-rustup component add rustfmt clippy llvm-tools-preview
+# Rust components used by CI (format, lint, tests)
+rustup component add rustfmt clippy
 
-# Test runner and coverage (same stack as scripts/ci.sh)
+# Test runner (same stack as scripts/ci.sh and GitHub Actions)
 cargo install cargo-nextest --locked
-cargo install cargo-llvm-cov --locked
 ```
+
+Program and demo keypairs live under `keys/` and are **not** in git — see [keys/README.md](keys/README.md).
 
 Solana 4.x is not supported by the current dependency set.
 
@@ -268,7 +268,7 @@ Full threat model and mitigations: [docs/SECURITY.md](docs/SECURITY.md). Account
 Run the full local CI before opening a pull request:
 
 ```bash
-# Format, clippy, nextest + llvm-cov, anchor build, CLI smoke test
+# Format, clippy, nextest, anchor build, CLI smoke test
 bash scripts/ci.sh
 ```
 
@@ -282,11 +282,11 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 # Build program first (integration tests need target/deploy/kzp_mini.so)
-mkdir -p target/deploy && cp keys/kzp_mini-keypair.json target/deploy/
+mkdir -p target/deploy && cp keys/program.json target/deploy/kzp_mini-keypair.json
 NO_DNA=1 anchor build --ignore-keys
 
-# Tests (nextest) with coverage summary (llvm-cov)
-cargo llvm-cov nextest --workspace --all-targets --all-features --summary-only
+# Tests (nextest)
+cargo nextest run --workspace --all-targets --all-features
 
 # Anchor test alias (runs nextest via Anchor.toml)
 anchor test
