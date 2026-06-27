@@ -1,6 +1,5 @@
 use crate::helpers::{TestApp, funded_admin, member_with_savings};
 use kzp_mini::error::PoolError;
-use kzp_mini::state::LoanStatus;
 use kzp_mini::utils::pda::member_pda;
 use solana_sdk::{pubkey::Pubkey, signature::Signer};
 
@@ -31,16 +30,16 @@ async fn universe(app: &mut TestApp) -> Universe {
     }
 }
 
-// Spec: nominal - admin settles default after due date from reserved liability.
+// Spec: nominal - any signer settles default after due date from reserved liability.
 //
 // Given:
 // - An active loan that is due for default settlement
 //
 // When:
-// - Admin calls `settle_default`
+// - A crank signer calls `settle_default`
 //
 // Then:
-// - Loan is `Defaulted`, pool counters update, and no fresh guarantor signatures are required
+// - Loan is closed, pool counters update, and no fresh guarantor signatures are required
 with_universe!(settle_default_nominal, |app, u| {
     let amount = 1_000_000_000;
     let loan_key = app
@@ -62,9 +61,7 @@ with_universe!(settle_default_nominal, |app, u| {
     let ix = app.settle_default(&u.admin, loan_key).await;
     app.process(&[ix], &[&u.admin]).await;
 
-    let loan = app.fetch_loan(&loan_key).await;
-    assert_eq!(loan.status, LoanStatus::Defaulted);
-    assert_eq!(loan.outstanding, 0);
+    assert!(!app.account_exists(&loan_key).await);
 
     let pool_after = app.fetch_pool(&u.pool).await;
     let (ga_member, _) = member_pda(&u.pool, &u.guarantor_a.pubkey());
@@ -85,7 +82,7 @@ with_universe!(settle_default_nominal, |app, u| {
 // - An active loan with an odd outstanding amount
 //
 // When:
-// - Admin settles the default after the due date
+// - A crank settles the default after the due date
 //
 // Then:
 // - Guarantor A pays the rounded-up share, guarantor B pays the remainder, and totals reconcile
@@ -138,7 +135,7 @@ with_universe!(settle_default_splits_odd_outstanding_exactly, |app, u| {
 // - Borrower's member account has drifted to point at a different active loan
 //
 // When:
-// - Admin settles the original defaulted loan
+// - A crank settles the original defaulted loan
 //
 // Then:
 // - Guarantor obligations are released and the non-matching borrower active loan is preserved
@@ -174,15 +171,13 @@ with_universe!(
         let (gb_member, _) = member_pda(&u.pool, &u.guarantor_b.pubkey());
         let ga_after = app.fetch_member(&ga_member).await;
         let gb_after = app.fetch_member(&gb_member).await;
-        let loan_after = app.fetch_loan(&loan_key).await;
 
         assert_eq!(borrower_after.active_loan, Some(other_active_loan));
         assert_eq!(ga_after.locked_savings, 0);
         assert_eq!(gb_after.locked_savings, 0);
         assert_eq!(ga_after.active_guarantee_count, 0);
         assert_eq!(gb_after.active_guarantee_count, 0);
-        assert_eq!(loan_after.guarantor_a_locked_savings, 0);
-        assert_eq!(loan_after.guarantor_b_locked_savings, 0);
+        assert!(!app.account_exists(&loan_key).await);
     }
 );
 
@@ -193,7 +188,7 @@ with_universe!(
 // - One guarantor member PDA has a drifted `pool` field
 //
 // When:
-// - Admin calls `settle_default`
+// - A crank calls `settle_default`
 //
 // Then:
 // - Transaction fails before ledger state is mutated
@@ -242,7 +237,7 @@ with_universe!(
 // - An active loan whose due date is still in the future
 //
 // When:
-// - Admin calls `settle_default`
+// - A crank calls `settle_default`
 //
 // Then:
 // - Transaction fails with `LoanNotDue`
@@ -265,17 +260,17 @@ with_universe!(settle_default_fails_before_due_date, |app, u| {
         .await;
 });
 
-// Spec: edge - non-admin cannot settle (`NotPoolAdmin`).
+// Spec: nominal - non-admin can settle a due default.
 //
 // Given:
 // - An active loan ready for settlement
 //
 // When:
-// - Borrower (non-admin) initiates `settle_default`
+// - Borrower initiates `settle_default`
 //
 // Then:
-// - Transaction fails with `NotPoolAdmin`
-with_universe!(settle_default_fails_non_admin, |app, u| {
+// - Transaction succeeds because settlement is permissionless after due date
+with_universe!(settle_default_allows_non_admin, |app, u| {
     let loan_key = app
         .activate_loan_with_term(
             &u.borrower,
@@ -290,6 +285,6 @@ with_universe!(settle_default_fails_non_admin, |app, u| {
         .await;
 
     let ix = app.settle_default(&u.borrower, loan_key).await;
-    app.process_expect_custom_err(&[ix], &[&u.borrower], PoolError::NotPoolAdmin)
-        .await;
+    app.process(&[ix], &[&u.borrower]).await;
+    assert!(!app.account_exists(&loan_key).await);
 });

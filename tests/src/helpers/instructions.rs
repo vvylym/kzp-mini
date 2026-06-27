@@ -334,16 +334,17 @@ impl TestApp {
         }
     }
 
-    pub async fn settle_default(&mut self, admin: &Keypair, loan: Pubkey) -> Instruction {
+    pub async fn settle_default(&mut self, crank: &Keypair, loan: Pubkey) -> Instruction {
         let loan_state = self.fetch_loan(&loan).await;
         let pool = loan_state.pool;
         let (borrower_member, _) = member_pda(&pool, &loan_state.borrower);
         let (guarantor_a_member, _) = member_pda(&pool, &loan_state.guarantor_a);
         let (guarantor_b_member, _) = member_pda(&pool, &loan_state.guarantor_b);
         let accounts = accounts::SettleDefault {
-            admin: admin.pubkey(),
+            crank: crank.pubkey(),
             pool,
             loan,
+            borrower: loan_state.borrower,
             borrower_member,
             guarantor_a_member,
             guarantor_b_member,

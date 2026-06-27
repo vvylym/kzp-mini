@@ -174,6 +174,7 @@ fn finalize_repayment<'info>(ctx: Context<'info, RepayLoan<'info>>) -> Result<()
     borrower_member.exit(ctx.program_id)?;
     guarantor_a_member.exit(ctx.program_id)?;
     guarantor_b_member.exit(ctx.program_id)?;
+    loan.close(ctx.accounts.borrower.to_account_info())?;
 
     Ok(())
 }

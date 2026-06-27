@@ -83,7 +83,7 @@ with_universe!(
     }
 );
 
-// Spec: nominal - full repayment clears borrower loan and guarantor obligations.
+// Spec: nominal - full repayment clears borrower loan, guarantor obligations, and closes loan.
 //
 // Given:
 // - An active loan with outstanding balance after a prior partial repayment
@@ -92,7 +92,7 @@ with_universe!(
 // - Borrower repays the remaining outstanding amount
 //
 // Then:
-// - Loan status is `Repaid`, borrower `active_loan` is cleared, guarantors drop the guarantee
+// - Loan account is closed, borrower `active_loan` is cleared, guarantors drop the guarantee
 with_universe!(
     repay_loan_full_nominal,
     universe(2_000_000_000),
@@ -109,7 +109,6 @@ with_universe!(
             .await;
         app.process(&[ix], &[&u.borrower]).await;
 
-        let loan = app.fetch_loan(&u.loan).await;
         let (bob_member, _) = member_pda(&u.pool, &u.borrower.pubkey());
         let bob_member = app.fetch_member(&bob_member).await;
         let (carol_member, _) = member_pda(&u.pool, &u.guarantor_a.pubkey());
@@ -117,15 +116,12 @@ with_universe!(
         let carol_member = app.fetch_member(&carol_member).await;
         let dave_member = app.fetch_member(&dave_member).await;
 
-        assert_eq!(loan.outstanding, 0);
-        assert_eq!(loan.status, LoanStatus::Repaid);
+        assert!(!app.account_exists(&u.loan).await);
         assert!(bob_member.active_loan.is_none());
         assert_eq!(carol_member.active_guarantee_count, 0);
         assert_eq!(dave_member.active_guarantee_count, 0);
         assert_eq!(carol_member.locked_savings, 0);
         assert_eq!(dave_member.locked_savings, 0);
-        assert_eq!(loan.guarantor_a_locked_savings, 0);
-        assert_eq!(loan.guarantor_b_locked_savings, 0);
         app.assert_vault_covers_liquid_savings(&u.pool).await;
     }
 );
@@ -179,18 +175,15 @@ with_universe!(
     }
 );
 
-// Spec: edge - loan already repaid; further repay rejected (`LoanNotActive`).
+// Spec: edge - fully repaid loans are closed.
 //
 // Given:
-// - A loan that has been fully repaid
-//
-// When:
-// - Borrower calls `repay_loan` again
+// - A loan is fully repaid
 //
 // Then:
-// - Transaction fails with `LoanNotActive`
+// - The terminal loan account no longer exists
 with_universe!(
-    repay_loan_fails_when_already_repaid,
+    repay_loan_closes_when_fully_repaid,
     universe(1_000_000_000),
     |app, u| {
         let ix_full = app
@@ -198,11 +191,7 @@ with_universe!(
             .await;
         app.process(&[ix_full], &[&u.borrower]).await;
 
-        let ix = app
-            .repay_loan(&u.borrower, u.loan, u.borrower_ata, 100_000_000)
-            .await;
-        app.process_expect_custom_err(&[ix], &[&u.borrower], PoolError::LoanNotActive)
-            .await;
+        assert!(!app.account_exists(&u.loan).await);
     }
 );
 

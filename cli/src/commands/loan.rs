@@ -258,11 +258,11 @@ pub fn withdraw_cosign(ctx: &CommandContext, loan_str: &str) -> Result<()> {
     Ok(())
 }
 
-/// Admin settles an active loan as defaulted from reserved guarantor savings.
+/// Permissionlessly settles an active loan as defaulted from reserved guarantor savings.
 pub fn settle_default(ctx: &CommandContext, loan_str: &str, pool_str: &str) -> Result<()> {
     let loan = parse_pubkey("loan", loan_str)?;
     let pool = parse_pubkey("pool", pool_str)?;
-    let admin = ctx.client.payer();
+    let crank = ctx.client.payer();
     let loan_state = fetch_loan(&ctx.client, &loan)?;
     let borrower = Pubkey::new_from_array(loan_state.borrower.to_bytes());
     let guarantor_a = Pubkey::new_from_array(loan_state.guarantor_a.to_bytes());
@@ -272,9 +272,10 @@ pub fn settle_default(ctx: &CommandContext, loan_str: &str, pool_str: &str) -> R
     let (guarantor_b_member, _) = member_pda(&pool, &guarantor_b);
 
     let accounts = accounts::SettleDefault {
-        admin: anchor_pubkey(admin.pubkey()),
+        crank: anchor_pubkey(crank.pubkey()),
         pool: anchor_pubkey(pool),
         loan: anchor_pubkey(loan),
+        borrower: anchor_pubkey(borrower),
         borrower_member: anchor_pubkey(borrower_member),
         guarantor_a_member: anchor_pubkey(guarantor_a_member),
         guarantor_b_member: anchor_pubkey(guarantor_b_member),
@@ -286,7 +287,7 @@ pub fn settle_default(ctx: &CommandContext, loan_str: &str, pool_str: &str) -> R
         data: instruction::SettleDefault {}.data(),
     });
 
-    let sig = ctx.client.send_instructions(&[ix], &[admin], ctx.dry_run)?;
+    let sig = ctx.client.send_instructions(&[ix], &[crank], ctx.dry_run)?;
     println!("Settled default on loan {loan}");
     if !ctx.dry_run {
         println!("Signature: {sig}");

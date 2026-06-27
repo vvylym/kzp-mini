@@ -7,14 +7,11 @@ use crate::operations::{release_active_guarantee, split_outstanding_50_50};
 use crate::state::{Loan, Member, Pool};
 use crate::utils::seeds::MEMBER_SEED;
 
-/// Accounts required for admin default settlement with 50/50 guarantor coverage.
+/// Accounts required for permissionless default settlement with 50/50 guarantor coverage.
 #[derive(Accounts)]
 pub struct SettleDefault<'info> {
-    /// Pool admin wallet (must match `pool.admin`; initiates settlement).
-    #[account(
-        constraint = admin.key() == pool.admin @ PoolError::NotPoolAdmin,
-    )]
-    pub admin: Signer<'info>,
+    /// Any signer may crank a due default settlement.
+    pub crank: Signer<'info>,
 
     /// Pool whose counters are updated.
     #[account(
@@ -26,9 +23,17 @@ pub struct SettleDefault<'info> {
     /// Active loan being marked defaulted.
     #[account(
         mut,
+        close = borrower,
         constraint = loan.status == crate::state::LoanStatus::Active @ PoolError::LoanNotActive,
     )]
     pub loan: Box<Account<'info, Loan>>,
+
+    /// Borrower wallet receives closed loan account rent.
+    #[account(
+        mut,
+        constraint = borrower.key() == loan.borrower @ PoolError::NotLoanBorrower,
+    )]
+    pub borrower: SystemAccount<'info>,
 
     /// Borrower's member account (`active_loan` cleared).
     #[account(
@@ -61,7 +66,7 @@ pub struct SettleDefault<'info> {
     pub guarantor_b_member: Box<Account<'info, Member>>,
 }
 
-/// Admin marks a due active loan defaulted from reserved guarantor savings.
+/// Marks a due active loan defaulted from reserved guarantor savings.
 pub fn handle_settle_default(ctx: Context<SettleDefault>) -> Result<()> {
     let loan = &mut ctx.accounts.loan;
     let now = Clock::get()?.unix_timestamp;
