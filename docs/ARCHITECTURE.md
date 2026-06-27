@@ -2,7 +2,7 @@
 
 On-chain workplace mutual-aid pool: coworkers save together and borrow with **two guarantors** who accept partial liability on default.
 
-The program enforces membership state, savings, loan limits (3× savings), co-sign before disbursement, repayment, cancellation, admin default settlement, and exit only when obligations are clear. **Who may join** and **when a default is justified** stay off-chain; on-chain code enforces **mechanics and fund safety**.
+The program enforces membership state, savings, loan limits (3× savings), co-sign before disbursement, repayment, cancellation, permissionless due-date default settlement, and exit only when obligations are clear. **Who may join** and **when a default is justified** stay off-chain; on-chain code enforces **mechanics and fund safety**.
 
 ## Account hierarchy
 
@@ -29,7 +29,7 @@ The program enforces membership state, savings, loan limits (3× savings), co-si
 | **Pool** | `["pool", admin, pool_name]` | Config, aggregate counters |
 | **Vault** | `["vault", pool]` | SPL token custody |
 | **Member** | `["member", pool, owner]` | Savings ledger, obligations |
-| **Loan** | `["loan", pool, borrower, loan_nonce_le]` | Pending → Active → Repaid / Defaulted |
+| **Loan** | `["loan", pool, borrower, loan_nonce_le]` | Pending → Active → closed on full repay/default |
 
 PDA helpers: `kzp_mini::utils::pda` · CLI: `cli/src/pda.rs`.
 
@@ -45,7 +45,7 @@ PDA helpers: `kzp_mini::utils::pda` · CLI: `cli/src/pda.rs`.
 | `repay_loan` | Partial or full repayment |
 | `cancel_loan` | Borrower cancels pending loan |
 | `withdraw_cosign` | Guarantor revokes partial co-sign |
-| `settle_default` | Admin default; 50/50 guarantor split |
+| `settle_default` | Permissionless due default; 50/50 guarantor split |
 | `exit_pool` | Withdraw savings; close member PDA |
 
 Full account metas: [INSTRUCTIONS.md](./INSTRUCTIONS.md). Field layouts: [STATE.md](./STATE.md).
@@ -61,7 +61,7 @@ Full account metas: [INSTRUCTIONS.md](./INSTRUCTIONS.md). Field layouts: [STATE.
 | Partial approval | `guarantor_*_signed` + `pending_guarantee_count` |
 | Disbursement | `co_sign_loan` CPI when vault ≥ principal |
 | Repayment | `repay_loan` CPI + counter updates |
-| Default | `settle_default` - 50/50 ledger + SPL from guarantors |
+| Default | `settle_default` - 50/50 reserved savings ledger settlement |
 | Leave pool | `exit_pool` pays savings, closes PDA |
 
 ## Code layout
@@ -82,8 +82,8 @@ The file `instructions/withdraw_co_sign.rs` maps to the `withdraw_cosign` instru
 ## Loan lifecycle
 
 ```
-Pending → Active → Repaid
-                 ↘ Defaulted
+Pending → Active → full repay (account closed)
+                 ↘ due default (account closed)
 Pending → cancel_loan (account closed)
 ```
 

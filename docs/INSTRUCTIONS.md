@@ -86,12 +86,18 @@ Partial co-sign only sets `guarantor_*_signed` and increments `pending_guarantee
 |---------|-----|--------|
 | guarantor | ✓ | ✓ |
 | loan | ✓ | |
-| pool | ✓ | |
-| guarantor_a_member, guarantor_b_member | ✓ | |
-| vault | ✓ | |
-| borrower_member | ✓ | |
-| borrower_token_account | ✓ | |
-| token_program | | |
+| guarantor_member | ✓ | signer member PDA |
+
+When the co-sign completes activation, append remaining accounts in this exact order:
+
+| Remaining account | Mut | Notes |
+|-------------------|-----|-------|
+| pool | ✓ | must match `loan.pool` |
+| other_guarantor_member | ✓ | PDA for the other nominated guarantor |
+| borrower_member | ✓ | PDA for `loan.borrower` |
+| vault | ✓ | canonical pool vault |
+| borrower_token_account | ✓ | receives principal |
+| token_program | | SPL Token program |
 
 ---
 
@@ -100,7 +106,9 @@ Partial co-sign only sets `guarantor_*_signed` and increments `pending_guarantee
 Borrower repays partially or fully to vault.
 
 - Decrements `loan.outstanding` and `pool.total_outstanding_loans`
-- On full repayment: loan → `Repaid`, clears matching borrower `active_loan`, releases loan-local guarantor backing from `locked_savings`, and decrements `active_guarantee_count`
+- On full repayment: closes the loan account to the borrower, clears matching borrower `active_loan`, releases loan-local guarantor backing from `locked_savings`, and decrements `active_guarantee_count`
+
+Full repayment must append remaining accounts: `borrower_member`, `guarantor_a_member`, `guarantor_b_member`.
 
 **Args:** `amount: u64`
 
@@ -133,7 +141,7 @@ Guarantor revokes a partial co-sign while loan is **Pending**. Clears their sign
 
 ## `settle_default`
 
-**Admin** initiates after `loan.due_ts`. Marks an **Active** loan as defaulted from reserved guarantor savings. Guarantors do not sign default settlement because liability was reserved at activation.
+Any signer may initiate after `loan.due_ts`. Marks an **Active** loan as defaulted from reserved guarantor savings and closes the loan account to the borrower. Guarantors do not sign default settlement because liability was reserved at activation.
 
 - Splits outstanding 50/50 (odd amounts: first guarantor gets ceiling)
 - Deducts shares from each guarantor's `savings_balance`
@@ -142,9 +150,10 @@ Guarantor revokes a partial co-sign while loan is **Pending**. Clears their sign
 
 | Account | Mut | Signer |
 |---------|-----|--------|
-| admin | | ✓ (must equal `pool.admin`) |
+| crank | | ✓ |
 | pool | ✓ | |
-| loan | ✓ | |
+| loan | ✓ | closed to borrower |
+| borrower | ✓ | close recipient; must equal `loan.borrower` |
 | borrower_member | ✓ | |
 | guarantor_a_member, guarantor_b_member | ✓ | |
 

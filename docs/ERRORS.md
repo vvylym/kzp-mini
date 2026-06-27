@@ -29,13 +29,16 @@ Defined in `programs/kzp-mini/src/error.rs` as `PoolError`.
 | 6022 | PendingGuaranteesExist | Exit with pending co-signs |
 | 6023 | InvalidVaultAccount | Vault PDA mismatch |
 | 6024 | InsufficientVaultLiquidity | Vault under-funded at disbursement or exit |
-| 6025 | NotPoolAdmin | Non-admin default settlement |
+| 6025 | NotPoolAdmin | Reserved legacy admin-only default check |
 | 6026 | GuarantorInsufficientSavings | Default share exceeds savings ledger |
 | 6027 | GuarantorInsufficientTokens | Reserved obsolete slot; defaults no longer debit guarantor ATAs |
 | 6028 | PoolNameTooLong | Pool name exceeds 32-byte PDA seed limit |
 | 6029 | ExistingPendingLoan | Borrower has pending loan |
 | 6030 | InvalidLoanTerm | Loan term is negative |
 | 6031 | LoanNotDue | Default settlement before due date |
+| 6032 | MissingActivationAccounts | Second co-sign omitted activation remaining accounts |
+| 6033 | MissingRepaymentFinalizationAccounts | Full repayment omitted finalization remaining accounts |
+| 6034 | InvalidRemainingAccounts | Remaining account bundle does not match loan-derived addresses |
 
 Anchor assigns base 6000 for custom errors. Verify against the IDL after deploy.
 

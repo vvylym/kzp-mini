@@ -43,7 +43,7 @@ Any excess is expected and represents entry-fee buffer or other vault surplus no
 
 ## Default settlement
 
-- Admin calls `settle_default` on an **Active** loan.
+- Any signer calls `settle_default` on a due **Active** loan.
 - Outstanding principal split **50/50** between guarantors (`div_ceil` on odd amounts).
 - Each guarantor is debited on the savings **ledger** from already-reserved liability; no fresh guarantor signature or SPL transfer is required.
 

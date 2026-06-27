@@ -4,13 +4,14 @@ The `kzp` CLI talks to the on-chain program over RPC. Amounts are in **base unit
 
 Setup: [GETTING_STARTED.md](./GETTING_STARTED.md).
 
-## Pool administrator
+## Pool setup and default cranking
 
 ```bash
 # Create pool + vault (prints pool PDA)
 kzp pool initialize --name "Fabryka Lodz KZP" --entry-fee 50 --mint <MINT>
 
-# Mark default after due date from reserved guarantor liability
+# Mark default after due date from reserved guarantor liability.
+# Any signer may crank this instruction; the borrower receives closed loan rent.
 kzp loan settle-default --loan <LOAN> --pool <POOL>
 ```
 

@@ -6,7 +6,7 @@ See [Architecture](../README.md#architecture) for how ledger fields relate to th
 
 | Field | Type | Description |
 |-------|------|-------------|
-| admin | Pubkey | Pool administrator (may call `settle_default`) |
+| admin | Pubkey | Pool creator/config authority; default settlement is permissionless after due date |
 | token_mint | Pubkey | SPL mint for all pool token flows |
 | vault | Pubkey | Token vault PDA |
 | required_entry_fee | u64 | One-time join fee (not credited to savings) |
@@ -44,7 +44,7 @@ See [Architecture](../README.md#architecture) for how ledger fields relate to th
 | guarantor_a_signed, guarantor_b_signed | bool | Partial co-sign flags (while Pending) |
 | guarantor_a_locked_savings, guarantor_b_locked_savings | u64 | Loan-local reserved savings backing per guarantor |
 | status | LoanStatus | Lifecycle |
-| due_ts | i64 | Unix timestamp when admin default settlement is allowed |
+| due_ts | i64 | Unix timestamp when permissionless default settlement is allowed |
 | bump | u8 | Loan PDA bump |
 | vault_bump | u8 | Copied from pool at request (vault CPI signing) |
 
@@ -54,8 +54,8 @@ See [Architecture](../README.md#architecture) for how ledger fields relate to th
 |-------|---------|
 | Pending | Awaiting both co-signs; no disbursement |
 | Active | Disbursed; outstanding may be > 0 |
-| Repaid | Fully repaid |
-| Defaulted | Admin settled; outstanding zeroed |
+| Repaid | Fully repaid; terminal loan accounts are closed |
+| Defaulted | Permissionlessly settled after due date; terminal loan accounts are closed |
 
 ## PDA seeds
 

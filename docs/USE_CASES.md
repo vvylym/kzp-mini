@@ -212,7 +212,7 @@ BDD-style scenarios. **55 integration tests** in `tests/src/test_*.rs` mirror th
 - **When** borrower repays amount ≤ outstanding
 - **Then** vault increases, `total_outstanding_loans` decreases
 - **When** final payment clears outstanding
-- **Then** loan → `Repaid`, `active_loan` cleared, guarantor active counts decremented, and loan-local backing released
+- **Then** loan account closes, `active_loan` is cleared, guarantor active counts decrement, and loan-local backing releases
 
 ### Edge - over-repay
 
@@ -222,17 +222,17 @@ BDD-style scenarios. **55 integration tests** in `tests/src/test_*.rs` mirror th
 
 ## UC-8: Default settlement
 
-**Actors:** Pool admin, guarantors
+**Actors:** Any crank signer, guarantors
 
 ### Nominal
 
 - **Given** active loan with outstanding O, each guarantor savings ≥ share and liability already reserved
-- **When** admin calls `settle_default` after the due date
-- **Then** loan → `Defaulted`, savings ledger reduced 50/50, outstanding zeroed, counters updated
+- **When** any signer calls `settle_default` after the due date
+- **Then** loan account closes, savings ledger reduces 50/50, outstanding zeroes, counters update
 
-### Edge - non-admin
+### Edge - non-admin crank
 
-- **Then** `NotPoolAdmin`
+- **Then** settlement succeeds after due date because the due-date check is the trust boundary
 
 ### Edge - insufficient guarantor savings
 
@@ -241,25 +241,25 @@ BDD-style scenarios. **55 integration tests** in `tests/src/test_*.rs` mirror th
 ### Edge - default before due date
 
 - **Given** an active loan whose due date has not passed
-- **When** admin calls `settle_default`
+- **When** any signer calls `settle_default`
 - **Then** settlement fails with the due-date error
 
 ### Nominal - default after due date from reserved liability
 
 - **Given** an active loan past due with guarantor shares already reserved
-- **When** admin calls `settle_default`
-- **Then** loan → `Defaulted`, outstanding is zeroed, reserved guarantor savings are debited, and no fresh guarantor signatures are required
+- **When** any signer calls `settle_default`
+- **Then** loan account closes, outstanding is zeroed, reserved guarantor savings are debited, and no fresh guarantor signatures are required
 
 ### Edge - odd outstanding split
 
 - **Given** an active loan with odd outstanding amount
-- **When** admin settles default after due date
+- **When** any signer settles default after due date
 - **Then** guarantor A pays the ceiling share, guarantor B pays the remainder, and total debits equal outstanding
 
 ### Safety - default clears only matching loan
 
 - **Given** borrower member state references an active loan
-- **When** admin settles that loan as defaulted
+- **When** any signer settles that loan as defaulted
 - **Then** borrower `active_loan` is cleared only if it matches the settled loan
 
 ---
