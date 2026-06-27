@@ -232,9 +232,9 @@ Pending → cancel_loan
 
 | State | Guarantor tracking | Escape hatches |
 |-------|-------------------|----------------|
-| Pending | `pending_guarantees` | Borrower: `cancel_loan` · Guarantor: `withdraw_cosign` |
-| Active | `active_guarantees` | Repay or admin `settle_default` |
-| Repaid / Defaulted | Cleared | Guarantors may exit when list empty |
+| Pending | `pending_guarantee_count` | Borrower: `cancel_loan` · Guarantor: `withdraw_cosign` |
+| Active | `active_guarantee_count` + loan-local backing | Repay or admin `settle_default` |
+| Repaid / Defaulted | Counts and backing cleared | Guarantors may exit when obligations are cleared |
 
 ---
 

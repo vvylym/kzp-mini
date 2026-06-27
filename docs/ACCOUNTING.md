@@ -38,8 +38,8 @@ Any excess is expected and represents entry-fee buffer or other vault surplus no
 
 ## Guarantee liability
 
-- While **Pending:** guarantor obligations live in `pending_guarantees`; either party can unwind via `cancel_loan` / `withdraw_cosign`.
-- After **disbursement:** obligations move to `active_guarantees`; guarantor savings liability is reserved in `locked_savings`, and guarantors cannot exit until cleared.
+- While **Pending:** guarantor obligations increment `pending_guarantee_count`; either party can unwind via `cancel_loan` / `withdraw_cosign`.
+- After **disbursement:** obligations move to `active_guarantee_count`; per-loan backing is stored on the `Loan`, the member summary is stored in `locked_savings`, and guarantors cannot exit until cleared.
 
 ## Default settlement
 

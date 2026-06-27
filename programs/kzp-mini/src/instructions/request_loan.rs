@@ -98,10 +98,16 @@ pub fn handle(
         guarantor_b: ctx.accounts.guarantor_b.key(),
         guarantor_a_has_active_loan: ctx.accounts.guarantor_a_member.active_loan.is_some(),
         guarantor_b_has_active_loan: ctx.accounts.guarantor_b_member.active_loan.is_some(),
-        guarantor_a_guarantee_count: ctx.accounts.guarantor_a_member.active_guarantees.len()
-            + ctx.accounts.guarantor_a_member.pending_guarantees.len(),
-        guarantor_b_guarantee_count: ctx.accounts.guarantor_b_member.active_guarantees.len()
-            + ctx.accounts.guarantor_b_member.pending_guarantees.len(),
+        guarantor_a_guarantee_count: usize::from(
+            ctx.accounts.guarantor_a_member.active_guarantee_count,
+        ) + usize::from(
+            ctx.accounts.guarantor_a_member.pending_guarantee_count,
+        ),
+        guarantor_b_guarantee_count: usize::from(
+            ctx.accounts.guarantor_b_member.active_guarantee_count,
+        ) + usize::from(
+            ctx.accounts.guarantor_b_member.pending_guarantee_count,
+        ),
     })?;
 
     let loan = &mut ctx.accounts.loan;
@@ -113,6 +119,8 @@ pub fn handle(
     loan.guarantor_b = ctx.accounts.guarantor_b.key();
     loan.guarantor_a_signed = false;
     loan.guarantor_b_signed = false;
+    loan.guarantor_a_locked_savings = 0;
+    loan.guarantor_b_locked_savings = 0;
     loan.status = LoanStatus::Pending;
     loan.due_ts = due_ts;
     loan.bump = ctx.bumps.loan;

@@ -55,11 +55,11 @@ pub struct ExitPool<'info> {
 pub fn handle(ctx: Context<ExitPool>) -> Result<()> {
     let member = &ctx.accounts.member_account;
     validate_exit_eligible(
-        member.active_loan,
-        member.pending_loan,
+        member.active_loan.is_some(),
+        member.pending_loan.is_some(),
         member.locked_savings,
-        &member.active_guarantees,
-        &member.pending_guarantees,
+        member.active_guarantee_count,
+        member.pending_guarantee_count,
     )?;
 
     let savings = member.savings_balance;

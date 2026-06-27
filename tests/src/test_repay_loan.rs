@@ -120,10 +120,12 @@ with_universe!(
         assert_eq!(loan.outstanding, 0);
         assert_eq!(loan.status, LoanStatus::Repaid);
         assert!(bob_member.active_loan.is_none());
-        assert!(!carol_member.active_guarantees.contains(&u.loan));
-        assert!(!dave_member.active_guarantees.contains(&u.loan));
+        assert_eq!(carol_member.active_guarantee_count, 0);
+        assert_eq!(dave_member.active_guarantee_count, 0);
         assert_eq!(carol_member.locked_savings, 0);
         assert_eq!(dave_member.locked_savings, 0);
+        assert_eq!(loan.guarantor_a_locked_savings, 0);
+        assert_eq!(loan.guarantor_b_locked_savings, 0);
         app.assert_vault_covers_liquid_savings(&u.pool).await;
     }
 );

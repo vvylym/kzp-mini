@@ -66,7 +66,7 @@ with_universe!(cancel_loan_nominal, |app, u| {
 
     let (ga_member, _) = member_pda(&u.pool, &u.guarantor_a.pubkey());
     let ga = app.fetch_member(&ga_member).await;
-    assert!(!ga.pending_guarantees.contains(&loan_key));
+    assert_eq!(ga.pending_guarantee_count, 0);
 });
 
 // Spec: nominal - borrower cancels an unsigned pending loan.

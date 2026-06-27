@@ -76,11 +76,11 @@ Guarantor approves a pending loan. When both guarantors have signed:
 2. Borrower and guarantor eligibility rechecked
 3. Guarantor 50/50 liability is reserved in `locked_savings`
 4. Loan → `Active`; principal disbursed to borrower ATA
-5. Both guarantors move from `pending_guarantees` → `active_guarantees`
+5. Both guarantors move from `pending_guarantee_count` → `active_guarantee_count`
 6. Borrower `pending_loan` moves to `active_loan`
 7. `pool.total_outstanding_loans += principal`
 
-Partial co-sign only sets `guarantor_*_signed` and adds `pending_guarantees`.
+Partial co-sign only sets `guarantor_*_signed` and increments `pending_guarantee_count`.
 
 | Account | Mut | Signer |
 |---------|-----|--------|
@@ -100,7 +100,7 @@ Partial co-sign only sets `guarantor_*_signed` and adds `pending_guarantees`.
 Borrower repays partially or fully to vault.
 
 - Decrements `loan.outstanding` and `pool.total_outstanding_loans`
-- On full repayment: loan → `Repaid`, clears matching borrower `active_loan`, releases guarantor `locked_savings`, and clears guarantor `active_guarantees`
+- On full repayment: loan → `Repaid`, clears matching borrower `active_loan`, releases loan-local guarantor backing from `locked_savings`, and decrements `active_guarantee_count`
 
 **Args:** `amount: u64`
 
@@ -108,7 +108,7 @@ Borrower repays partially or fully to vault.
 
 ## `cancel_loan`
 
-Borrower cancels a **Pending** loan anytime. Closes loan account (rent to borrower); clears borrower `pending_loan` and guarantor `pending_guarantees`.
+Borrower cancels a **Pending** loan anytime. Closes loan account (rent to borrower); clears borrower `pending_loan` and decrements signed guarantor `pending_guarantee_count`.
 
 | Account | Mut | Signer |
 |---------|-----|--------|
@@ -121,7 +121,7 @@ Borrower cancels a **Pending** loan anytime. Closes loan account (rent to borrow
 
 ## `withdraw_cosign`
 
-Guarantor revokes a partial co-sign while loan is **Pending**. Clears their `pending_guarantees` entry and signature flag.
+Guarantor revokes a partial co-sign while loan is **Pending**. Clears their signature flag and decrements `pending_guarantee_count`.
 
 | Account | Mut | Signer |
 |---------|-----|--------|
@@ -138,7 +138,7 @@ Guarantor revokes a partial co-sign while loan is **Pending**. Clears their `pen
 - Splits outstanding 50/50 (odd amounts: first guarantor gets ceiling)
 - Deducts shares from each guarantor's `savings_balance`
 - Decrements `pool.total_savings` and `pool.total_outstanding_loans` by outstanding
-- Clears matching borrower `active_loan`, releases guarantor `locked_savings`, and clears guarantor `active_guarantees`
+- Clears matching borrower `active_loan`, releases loan-local guarantor backing from `locked_savings`, and decrements `active_guarantee_count`
 
 | Account | Mut | Signer |
 |---------|-----|--------|
@@ -156,7 +156,7 @@ Large account struct uses `Box<>` in the Anchor context to stay under BPF stack 
 
 Withdraws `savings_balance` from vault and closes member account.
 
-**Blocked when:** `active_loan` set, `pending_loan` set, `locked_savings > 0`, non-empty `active_guarantees`, non-empty `pending_guarantees`, or `vault.amount < savings_balance` (`InsufficientVaultLiquidity`).
+**Blocked when:** `active_loan` set, `pending_loan` set, `locked_savings > 0`, non-zero `active_guarantee_count`, non-zero `pending_guarantee_count`, or `vault.amount < savings_balance` (`InsufficientVaultLiquidity`).
 
 | Account | Mut | Signer |
 |---------|-----|--------|

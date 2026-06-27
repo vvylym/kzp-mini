@@ -21,24 +21,24 @@ KZP Minimal is an on-chain mutual-aid pool: members deposit SPL tokens, borrow a
 | **Token CPIs** | Vault PDA signs outbound transfers; user signs inbound deposits/repayments; mint/owner constraints on ATAs |
 | **Arithmetic** | `checked_add` / `checked_sub` on savings and pool counters |
 | **Loan limits** | 3× savings cap, one active loan per borrower, five guarantees per guarantor (active + pending) |
-| **Co-sign** | Pending obligations in `pending_guarantees`; active only at disbursement when both sign |
+| **Co-sign** | Pending obligations counted in `pending_guarantee_count`; active counts/backing set only at disbursement when both sign |
 | **Vault liquidity (disburse)** | `InsufficientVaultLiquidity` at disbursement if `vault.amount < principal` |
 | **Vault liquidity (exit)** | `InsufficientVaultLiquidity` if `vault.amount < member.savings_balance` (fail-closed when ledger exceeds physical vault) |
 | **Pending cleanup** | `cancel_loan` (borrower) and `withdraw_cosign` (guarantor) while `Pending` |
-| **Exit** | Blocked for `active_loan`, `active_guarantees`, or `pending_guarantees` |
+| **Exit** | Blocked for `active_loan`, `locked_savings`, or non-zero guarantee counts |
 | **Default** | Admin-only `settle_default`; 50/50 from already-reserved guarantor savings ledger liability, with no fresh guarantor signatures |
 | **PDAs** | Pool, vault, member, loan accounts use canonical seeds; vault bump stored on loan at request |
 
 ## Co-sign lifecycle
 
-| Step | Loan | Guarantor `pending_guarantees` | Guarantor `active_guarantees` | Can exit? |
-|------|------|-------------------------------|------------------------------|-----------|
-| Requested | Pending | `[]` | `[]` | Yes |
-| One co-sign | Pending | `[loan]` | `[]` | No (pending) |
-| Both co-sign / disburse | Active | `[]` | `[loan]` | No (active) |
-| Repaid | Repaid | `[]` | `[]` | Yes |
-| Cancelled (borrower) | closed | cleared | `[]` | Yes |
-| Co-sign withdrawn | Pending | cleared | `[]` | Yes |
+| Step | Loan | Pending count | Active count / backing | Can exit? |
+|------|------|---------------|------------------------|-----------|
+| Requested | Pending | `0` | `0` / none | Yes |
+| One co-sign | Pending | `1` | `0` / none | No (pending) |
+| Both co-sign / disburse | Active | `0` | `1` / loan-local backing | No (active) |
+| Repaid | Repaid | `0` | `0` / released | Yes |
+| Cancelled (borrower) | closed | decremented | `0` / none | Yes |
+| Co-sign withdrawn | Pending | decremented | `0` / none | Yes |
 
 Guarantors can `withdraw_cosign` while pending. Borrower can `cancel_loan` anytime while pending.
 
@@ -52,11 +52,11 @@ Issues identified during audit and subsequently handled on-chain.
 |---|------------|-----|---------------------|
 | 1 | Disbursement could drain an under-funded vault | Vault balance checked before transfer | `co_sign_loan` → `InsufficientVaultLiquidity` |
 | 2 | Pending loans could stall forever | Borrower-initiated cancel | `cancel_loan` |
-| 3 | Partial co-sign locked guarantors in `active_guarantees` or allowed exit griefing | Separate `pending_guarantees`; exit blocked while pending | `co_sign_loan`, `withdraw_cosign`, `exit_pool` |
+| 3 | Partial co-sign locked guarantors as active obligations or allowed exit griefing | Separate pending counts; exit blocked while pending | `co_sign_loan`, `withdraw_cosign`, `exit_pool` |
 | 4 | `total_outstanding_loans` was stale | Counter updated on disburse, repay, default | `co_sign_loan`, `repay_loan`, `settle_default` |
 | 5 | No on-chain default path | Admin settlement with 50/50 guarantor split | `settle_default` |
 | 6 | Vault vs ledger drift on exit | Exit blocked when vault cannot cover payout | `exit_pool` → `InsufficientVaultLiquidity` |
-| 7 | Default did not recapitalize vault | Guarantors transfer default shares to vault via SPL CPI | `settle_default` (guarantors co-sign token transfer) |
+| 7 | Default required fresh guarantor action | Default uses already-reserved savings liability with no fresh guarantor signatures | `settle_default` |
 
 Integration tests in `tests/src/test_*.rs` cover these paths.
 

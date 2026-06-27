@@ -174,12 +174,15 @@ with_universe!(
         let (gb_member, _) = member_pda(&u.pool, &u.guarantor_b.pubkey());
         let ga_after = app.fetch_member(&ga_member).await;
         let gb_after = app.fetch_member(&gb_member).await;
+        let loan_after = app.fetch_loan(&loan_key).await;
 
         assert_eq!(borrower_after.active_loan, Some(other_active_loan));
         assert_eq!(ga_after.locked_savings, 0);
         assert_eq!(gb_after.locked_savings, 0);
-        assert!(!ga_after.active_guarantees.contains(&loan_key));
-        assert!(!gb_after.active_guarantees.contains(&loan_key));
+        assert_eq!(ga_after.active_guarantee_count, 0);
+        assert_eq!(gb_after.active_guarantee_count, 0);
+        assert_eq!(loan_after.guarantor_a_locked_savings, 0);
+        assert_eq!(loan_after.guarantor_b_locked_savings, 0);
     }
 );
 

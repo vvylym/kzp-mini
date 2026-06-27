@@ -3,9 +3,7 @@
 use anchor_lang::prelude::*;
 
 use crate::error::PoolError;
-use crate::operations::{
-    release_active_guarantee, split_outstanding_50_50, validate_guarantor_default_coverage,
-};
+use crate::operations::{release_active_guarantee, validate_guarantor_default_coverage};
 use crate::state::{Loan, Member, Pool};
 use crate::utils::seeds::MEMBER_SEED;
 
@@ -86,10 +84,9 @@ pub fn handle(ctx: Context<SettleDefault>) -> Result<()> {
         .savings_balance
         .checked_sub(share_b)
         .ok_or(ProgramError::ArithmeticOverflow)?;
-    let (locked_share_a, locked_share_b) = split_outstanding_50_50(loan.principal);
     let loan_key = loan.key();
-    release_active_guarantee(guarantor_a, &loan_key, locked_share_a)?;
-    release_active_guarantee(guarantor_b, &loan_key, locked_share_b)?;
+    release_active_guarantee(guarantor_a, loan.guarantor_a_locked_savings)?;
+    release_active_guarantee(guarantor_b, loan.guarantor_b_locked_savings)?;
 
     let pool = &mut ctx.accounts.pool;
     pool.total_savings = pool
@@ -102,6 +99,8 @@ pub fn handle(ctx: Context<SettleDefault>) -> Result<()> {
         .ok_or(ProgramError::ArithmeticOverflow)?;
 
     loan.outstanding = 0;
+    loan.guarantor_a_locked_savings = 0;
+    loan.guarantor_b_locked_savings = 0;
     loan.status = crate::state::LoanStatus::Defaulted;
 
     if ctx.accounts.borrower_member.active_loan == Some(loan_key) {

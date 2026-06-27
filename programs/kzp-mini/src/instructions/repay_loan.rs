@@ -5,8 +5,7 @@ use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 use crate::error::PoolError;
 use crate::operations::{
-    apply_repayment, release_active_guarantee, split_outstanding_50_50, validate_borrower,
-    validate_repayment,
+    apply_repayment, release_active_guarantee, validate_borrower, validate_repayment,
 };
 use crate::state::{Loan, Member, Pool};
 use crate::utils::seeds::{MEMBER_SEED, VAULT_SEED};
@@ -114,9 +113,16 @@ pub fn handle(ctx: Context<RepayLoan>, amount: u64) -> Result<()> {
         if ctx.accounts.borrower_member.active_loan == Some(loan_key) {
             ctx.accounts.borrower_member.active_loan = None;
         }
-        let (share_a, share_b) = split_outstanding_50_50(loan.principal);
-        release_active_guarantee(&mut ctx.accounts.guarantor_a_member, &loan_key, share_a)?;
-        release_active_guarantee(&mut ctx.accounts.guarantor_b_member, &loan_key, share_b)?;
+        release_active_guarantee(
+            &mut ctx.accounts.guarantor_a_member,
+            loan.guarantor_a_locked_savings,
+        )?;
+        release_active_guarantee(
+            &mut ctx.accounts.guarantor_b_member,
+            loan.guarantor_b_locked_savings,
+        )?;
+        loan.guarantor_a_locked_savings = 0;
+        loan.guarantor_b_locked_savings = 0;
     }
 
     Ok(())

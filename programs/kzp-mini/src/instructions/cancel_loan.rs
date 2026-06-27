@@ -60,7 +60,11 @@ pub fn handle(ctx: Context<CancelLoan>) -> Result<()> {
     if ctx.accounts.borrower_member.pending_loan == Some(loan_key) {
         ctx.accounts.borrower_member.pending_loan = None;
     }
-    clear_pending_guarantee(&mut ctx.accounts.guarantor_a_member, &loan_key);
-    clear_pending_guarantee(&mut ctx.accounts.guarantor_b_member, &loan_key);
+    if ctx.accounts.loan.guarantor_a_signed {
+        clear_pending_guarantee(&mut ctx.accounts.guarantor_a_member)?;
+    }
+    if ctx.accounts.loan.guarantor_b_signed {
+        clear_pending_guarantee(&mut ctx.accounts.guarantor_b_member)?;
+    }
     Ok(())
 }

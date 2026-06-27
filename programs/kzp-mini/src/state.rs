@@ -49,10 +49,10 @@ pub struct Member {
     pub active_loan: Option<Pubkey>,
     /// Loan PDA pubkey while the member has a pending loan request, else `None`.
     pub pending_loan: Option<Pubkey>,
-    /// Disbursed loans this member guarantees (blocks exit until cleared).
-    pub active_guarantees: Vec<Pubkey>,
-    /// Pending loans where this member co-signed before disbursement.
-    pub pending_guarantees: Vec<Pubkey>,
+    /// Number of active loans this member guarantees (blocks exit until cleared).
+    pub active_guarantee_count: u8,
+    /// Number of pending loans this member has co-signed before disbursement.
+    pub pending_guarantee_count: u8,
     /// Bump seed for the member PDA.
     pub bump: u8,
 }
@@ -62,20 +62,7 @@ impl Member {
     pub const MAX_GUARANTEES: usize = 5;
 
     /// Account size in bytes including the 8-byte Anchor discriminator.
-    pub const LEN: usize = 8
-        + 32
-        + 8
-        + 32
-        + 8
-        + 8
-        + 8
-        + (1 + 32)
-        + (1 + 32)
-        + 4
-        + (Self::MAX_GUARANTEES * 32)
-        + 4
-        + (Self::MAX_GUARANTEES * 32)
-        + 1;
+    pub const LEN: usize = 8 + 32 + 8 + 32 + 8 + 8 + 8 + (1 + 32) + (1 + 32) + 1 + 1 + 1;
 }
 
 /// A co-signed loan between a borrower and two guarantors.
@@ -97,6 +84,10 @@ pub struct Loan {
     pub guarantor_a_signed: bool,
     /// Whether guarantor B has co-signed while the loan is pending.
     pub guarantor_b_signed: bool,
+    /// Savings amount reserved from guarantor A when the loan activates.
+    pub guarantor_a_locked_savings: u64,
+    /// Savings amount reserved from guarantor B when the loan activates.
+    pub guarantor_b_locked_savings: u64,
     /// Current lifecycle state of the loan.
     pub status: LoanStatus,
     /// Unix timestamp when admin default settlement becomes allowed.
@@ -109,7 +100,7 @@ pub struct Loan {
 
 impl Loan {
     /// Account size in bytes including the 8-byte Anchor discriminator.
-    pub const LEN: usize = 8 + 32 + 32 + 8 + 8 + 32 + 32 + 1 + 1 + 1 + 8 + 1 + 1;
+    pub const LEN: usize = 8 + 32 + 32 + 8 + 8 + 32 + 32 + 1 + 1 + 8 + 8 + 1 + 8 + 1 + 1;
 }
 
 /// Lifecycle state of a loan account.

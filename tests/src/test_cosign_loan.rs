@@ -91,8 +91,8 @@ with_universe!(
 
         let (carol_member, _) = member_pda(&u.pool, &u.guarantor_a.pubkey());
         let carol_member_state = app.fetch_member(&carol_member).await;
-        assert!(!carol_member_state.active_guarantees.contains(&loan_key));
-        assert!(carol_member_state.pending_guarantees.contains(&loan_key));
+        assert_eq!(carol_member_state.active_guarantee_count, 0);
+        assert_eq!(carol_member_state.pending_guarantee_count, 1);
         assert_eq!(app.token_balance(&u.borrower_ata).await, bob_balance_before);
 
         let ix_dave = app
@@ -118,12 +118,14 @@ with_universe!(
         let (dave_member, _) = member_pda(&u.pool, &u.guarantor_b.pubkey());
         let carol_after = app.fetch_member(&carol_member).await;
         let dave_after = app.fetch_member(&dave_member).await;
-        assert!(carol_after.pending_guarantees.is_empty());
-        assert!(dave_after.pending_guarantees.is_empty());
-        assert!(carol_after.active_guarantees.contains(&loan_key));
-        assert!(dave_after.active_guarantees.contains(&loan_key));
+        assert_eq!(carol_after.pending_guarantee_count, 0);
+        assert_eq!(dave_after.pending_guarantee_count, 0);
+        assert_eq!(carol_after.active_guarantee_count, 1);
+        assert_eq!(dave_after.active_guarantee_count, 1);
         assert_eq!(carol_after.locked_savings, amount / 2);
         assert_eq!(dave_after.locked_savings, amount / 2);
+        assert_eq!(loan.guarantor_a_locked_savings, amount / 2);
+        assert_eq!(loan.guarantor_b_locked_savings, amount / 2);
         app.assert_vault_covers_liquid_savings(&u.pool).await;
     }
 );

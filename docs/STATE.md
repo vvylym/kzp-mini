@@ -28,8 +28,8 @@ See [Architecture](../README.md#architecture) for how ledger fields relate to th
 | locked_savings | u64 | Savings reserved for active guarantor liability |
 | active_loan | Option\<Pubkey\> | Disbursed loan as borrower |
 | pending_loan | Option\<Pubkey\> | Pending loan request as borrower |
-| active_guarantees | Vec\<Pubkey\> | Disbursed loans guaranteed (max 5) |
-| pending_guarantees | Vec\<Pubkey\> | Pending loans co-signed (max 5) |
+| active_guarantee_count | u8 | Count of disbursed loans guaranteed (max 5) |
+| pending_guarantee_count | u8 | Count of pending loans co-signed (max 5) |
 | bump | u8 | Member PDA bump |
 
 ## Loan
@@ -42,6 +42,7 @@ See [Architecture](../README.md#architecture) for how ledger fields relate to th
 | outstanding | u64 | Remaining balance |
 | guarantor_a, guarantor_b | Pubkey | Nominated guarantors |
 | guarantor_a_signed, guarantor_b_signed | bool | Partial co-sign flags (while Pending) |
+| guarantor_a_locked_savings, guarantor_b_locked_savings | u64 | Loan-local reserved savings backing per guarantor |
 | status | LoanStatus | Lifecycle |
 | due_ts | i64 | Unix timestamp when admin default settlement is allowed |
 | bump | u8 | Loan PDA bump |

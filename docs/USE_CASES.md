@@ -98,9 +98,9 @@ BDD-style scenarios. **55 integration tests** in `tests/src/test_*.rs` mirror th
 
 - **Given** pending loan
 - **When** guarantor A co-signs
-- **Then** loan stays `Pending`, A has `pending_guarantees`, no token movement
+- **Then** loan stays `Pending`, A's `pending_guarantee_count` increments, no token movement
 - **When** guarantor B co-signs
-- **Then** loan → `Active`, both have `active_guarantees`, borrower receives principal, `total_outstanding_loans` increases
+- **Then** loan → `Active`, both guarantors have active guarantee counts and loan-local backing, borrower receives principal, `total_outstanding_loans` increases
 
 ### Edge - not nominated guarantor
 
@@ -154,7 +154,7 @@ BDD-style scenarios. **55 integration tests** in `tests/src/test_*.rs` mirror th
 
 - **Given** pending loan (with or without partial co-signs)
 - **When** borrower calls `cancel_loan`
-- **Then** loan account closed, guarantor `pending_guarantees` cleared
+- **Then** loan account closed, signed guarantor pending counts decremented
 
 ### Edge - cancel active loan
 
@@ -182,7 +182,7 @@ BDD-style scenarios. **55 integration tests** in `tests/src/test_*.rs` mirror th
 
 - **Given** guarantor co-signed pending loan
 - **When** `withdraw_cosign`
-- **Then** signature flag cleared, `pending_guarantees` entry removed
+- **Then** signature flag cleared, `pending_guarantee_count` decremented
 
 ### Edge - withdraw without co-signing
 
@@ -212,7 +212,7 @@ BDD-style scenarios. **55 integration tests** in `tests/src/test_*.rs` mirror th
 - **When** borrower repays amount ≤ outstanding
 - **Then** vault increases, `total_outstanding_loans` decreases
 - **When** final payment clears outstanding
-- **Then** loan → `Repaid`, `active_loan` and guarantor `active_guarantees` cleared
+- **Then** loan → `Repaid`, `active_loan` cleared, guarantor active counts decremented, and loan-local backing released
 
 ### Edge - over-repay
 

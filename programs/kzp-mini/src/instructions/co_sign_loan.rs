@@ -94,12 +94,12 @@ pub fn handle(ctx: Context<CoSignLoan>) -> Result<()> {
         GuarantorSlot::A => {
             require!(!loan.guarantor_a_signed, PoolError::AlreadyCoSigned);
             loan.guarantor_a_signed = true;
-            push_pending_guarantee(&mut ctx.accounts.guarantor_a_member, loan_key)?;
+            push_pending_guarantee(&mut ctx.accounts.guarantor_a_member)?;
         }
         GuarantorSlot::B => {
             require!(!loan.guarantor_b_signed, PoolError::AlreadyCoSigned);
             loan.guarantor_b_signed = true;
-            push_pending_guarantee(&mut ctx.accounts.guarantor_b_member, loan_key)?;
+            push_pending_guarantee(&mut ctx.accounts.guarantor_b_member)?;
         }
     }
 
@@ -123,6 +123,8 @@ pub fn handle(ctx: Context<CoSignLoan>) -> Result<()> {
         let (share_a, share_b) = split_outstanding_50_50(loan.principal);
         reserve_savings(&mut ctx.accounts.guarantor_a_member, share_a)?;
         reserve_savings(&mut ctx.accounts.guarantor_b_member, share_b)?;
+        loan.guarantor_a_locked_savings = share_a;
+        loan.guarantor_b_locked_savings = share_b;
 
         loan.status = crate::state::LoanStatus::Active;
 
@@ -132,8 +134,8 @@ pub fn handle(ctx: Context<CoSignLoan>) -> Result<()> {
 
         let guarantor_a = &mut ctx.accounts.guarantor_a_member;
         let guarantor_b = &mut ctx.accounts.guarantor_b_member;
-        move_pending_to_active(guarantor_a, loan_key)?;
-        move_pending_to_active(guarantor_b, loan_key)?;
+        move_pending_to_active(guarantor_a)?;
+        move_pending_to_active(guarantor_b)?;
 
         let pool = &mut ctx.accounts.pool;
         pool.total_outstanding_loans = pool

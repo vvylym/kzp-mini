@@ -58,7 +58,7 @@ Full account metas: [INSTRUCTIONS.md](./INSTRUCTIONS.md). Field layouts: [STATE.
 | Member record | **Member** PDA (`savings_balance`, obligations) |
 | Loan application | **Loan** PDA lifecycle |
 | Two guarantors | `guarantor_a` / `guarantor_b`; both co-sign to disburse |
-| Partial approval | `guarantor_*_signed` + `pending_guarantees` |
+| Partial approval | `guarantor_*_signed` + `pending_guarantee_count` |
 | Disbursement | `co_sign_loan` CPI when vault ≥ principal |
 | Repayment | `repay_loan` CPI + counter updates |
 | Default | `settle_default` - 50/50 ledger + SPL from guarantors |
@@ -92,6 +92,6 @@ Pending → cancel_loan (account closed)
 | Borrower | `cancel_loan` |
 | Guarantor | `withdraw_cosign` |
 
-**`pending_guarantees`** vs **`active_guarantees`:** partial co-sign only adds pending obligations; active guarantees are set after both co-signs and successful disbursement.
+**Pending vs active guarantee counts:** partial co-sign only increments pending obligations; active counts and loan-local backing are set after both co-signs and successful disbursement.
 
 See [ACCOUNTING.md](./ACCOUNTING.md) for ledger vs vault. See [SECURITY.md](./SECURITY.md) for trust boundaries.
