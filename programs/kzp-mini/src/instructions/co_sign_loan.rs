@@ -5,7 +5,7 @@ use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 use crate::error::PoolError;
 use crate::operations::{
-    GuarantorSlot, guarantor_slot, move_pending_to_active, push_pending_guarantee, reserve_savings,
+    GuarantorSlot, clear_pending_guarantee, guarantor_slot, push_pending_guarantee,
     split_outstanding_50_50, validate_vault_liquidity,
 };
 use crate::state::{Loan, Member, Pool};
@@ -134,8 +134,8 @@ pub fn handle_co_sign_loan(ctx: Context<CoSignLoan>) -> Result<()> {
 
         let guarantor_a = &mut ctx.accounts.guarantor_a_member;
         let guarantor_b = &mut ctx.accounts.guarantor_b_member;
-        move_pending_to_active(guarantor_a)?;
-        move_pending_to_active(guarantor_b)?;
+        activate_pending_guarantee(guarantor_a)?;
+        activate_pending_guarantee(guarantor_b)?;
 
         let pool = &mut ctx.accounts.pool;
         pool.total_outstanding_loans = pool
@@ -164,4 +164,78 @@ pub fn handle_co_sign_loan(ctx: Context<CoSignLoan>) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn unlocked_savings(member: &Member) -> Result<u64> {
+    member
+        .savings_balance
+        .checked_sub(member.locked_savings)
+        .ok_or(PoolError::GuarantorInsufficientSavings.into())
+}
+
+fn reserve_savings(member: &mut Member, amount: u64) -> Result<()> {
+    if unlocked_savings(member)? < amount {
+        return err!(PoolError::GuarantorInsufficientSavings);
+    }
+    member.locked_savings = member
+        .locked_savings
+        .checked_add(amount)
+        .ok_or(ProgramError::ArithmeticOverflow)?;
+    Ok(())
+}
+
+fn activate_pending_guarantee(member: &mut Member) -> Result<()> {
+    if usize::from(member.active_guarantee_count) >= Member::MAX_GUARANTEES {
+        return err!(PoolError::GuarantorLimitReached);
+    }
+    member.active_guarantee_count = member
+        .active_guarantee_count
+        .checked_add(1)
+        .ok_or(ProgramError::ArithmeticOverflow)?;
+    clear_pending_guarantee(member)?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn member_with_savings(savings_balance: u64) -> Member {
+        Member {
+            pool: Pubkey::new_unique(),
+            member_id: 0,
+            owner: Pubkey::new_unique(),
+            entry_fee_paid: 0,
+            savings_balance,
+            locked_savings: 0,
+            active_loan: None,
+            pending_loan: None,
+            active_guarantee_count: 0,
+            pending_guarantee_count: 0,
+            bump: 0,
+        }
+    }
+
+    #[test]
+    fn reserve_uses_unlocked_savings() {
+        let mut member = member_with_savings(1_000);
+        reserve_savings(&mut member, 600).unwrap();
+        assert_eq!(member.locked_savings, 600);
+        assert_eq!(unlocked_savings(&member).unwrap(), 400);
+        assert_eq!(
+            reserve_savings(&mut member, 401).unwrap_err(),
+            PoolError::GuarantorInsufficientSavings.into()
+        );
+    }
+
+    #[test]
+    fn activation_moves_pending_to_active() {
+        let mut member = member_with_savings(1_000);
+        member.pending_guarantee_count = 1;
+
+        activate_pending_guarantee(&mut member).unwrap();
+
+        assert_eq!(member.pending_guarantee_count, 0);
+        assert_eq!(member.active_guarantee_count, 1);
+    }
 }

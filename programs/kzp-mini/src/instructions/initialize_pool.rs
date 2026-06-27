@@ -3,7 +3,8 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
-use crate::operations::validate_pool_name;
+use crate::constants::{MAX_POOL_NAME_LEN, MIN_POOL_NAME_LEN};
+use crate::error::PoolError;
 use crate::state::Pool;
 use crate::utils::seeds::{POOL_SEED, VAULT_SEED};
 
@@ -69,4 +70,30 @@ pub fn handle_initialize_pool(
     pool.vault_bump = ctx.bumps.vault;
 
     Ok(())
+}
+
+fn validate_pool_name(pool_name: &str) -> std::result::Result<(), PoolError> {
+    if pool_name.len() < MIN_POOL_NAME_LEN {
+        return Err(PoolError::PoolNameTooShort);
+    }
+    if pool_name.len() > MAX_POOL_NAME_LEN {
+        return Err(PoolError::PoolNameTooLong);
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pool_name_validation_keeps_seed_bounds() {
+        assert!(validate_pool_name("ab").is_err());
+        assert!(validate_pool_name("abc").is_ok());
+        assert!(validate_pool_name(&"a".repeat(MAX_POOL_NAME_LEN)).is_ok());
+        assert_eq!(
+            validate_pool_name(&"a".repeat(MAX_POOL_NAME_LEN + 1)).unwrap_err(),
+            PoolError::PoolNameTooLong
+        );
+    }
 }

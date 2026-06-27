@@ -3,7 +3,7 @@
 use anchor_lang::prelude::*;
 
 use crate::error::PoolError;
-use crate::operations::{release_active_guarantee, validate_guarantor_default_coverage};
+use crate::operations::{release_active_guarantee, split_outstanding_50_50};
 use crate::state::{Loan, Member, Pool};
 use crate::utils::seeds::MEMBER_SEED;
 
@@ -108,4 +108,33 @@ pub fn handle_settle_default(ctx: Context<SettleDefault>) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn validate_guarantor_default_coverage(
+    outstanding: u64,
+    guarantor_a_savings: u64,
+    guarantor_b_savings: u64,
+) -> std::result::Result<(u64, u64), PoolError> {
+    let (share_a, share_b) = split_outstanding_50_50(outstanding);
+    if guarantor_a_savings < share_a || guarantor_b_savings < share_b {
+        return Err(PoolError::GuarantorInsufficientSavings);
+    }
+    Ok((share_a, share_b))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn coverage_check_uses_shared_split() {
+        assert_eq!(
+            validate_guarantor_default_coverage(1_001, 501, 500).unwrap(),
+            (501, 500)
+        );
+        assert_eq!(
+            validate_guarantor_default_coverage(1_001, 500, 500).unwrap_err(),
+            PoolError::GuarantorInsufficientSavings
+        );
+    }
 }

@@ -4,7 +4,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 use crate::error::PoolError;
-use crate::operations::{validate_exit_eligible, validate_vault_liquidity};
+use crate::operations::validate_vault_liquidity;
 use crate::state::{Member, Pool};
 use crate::utils::seeds::{MEMBER_SEED, VAULT_SEED};
 
@@ -94,4 +94,59 @@ pub fn handle_exit_pool(ctx: Context<ExitPool>) -> Result<()> {
     )?;
 
     Ok(())
+}
+
+fn validate_exit_eligible(
+    active_loan_is_some: bool,
+    pending_loan_is_some: bool,
+    locked_savings: u64,
+    active_guarantee_count: u8,
+    pending_guarantee_count: u8,
+) -> std::result::Result<(), PoolError> {
+    if active_loan_is_some {
+        return Err(PoolError::OutstandingLoanExists);
+    }
+    if pending_loan_is_some {
+        return Err(PoolError::OutstandingLoanExists);
+    }
+    if locked_savings > 0 {
+        return Err(PoolError::ActiveGuaranteesExist);
+    }
+    if active_guarantee_count > 0 {
+        return Err(PoolError::ActiveGuaranteesExist);
+    }
+    if pending_guarantee_count > 0 {
+        return Err(PoolError::PendingGuaranteesExist);
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn exit_rules_keep_error_ordering() {
+        assert!(validate_exit_eligible(false, false, 0, 0, 0).is_ok());
+        assert_eq!(
+            validate_exit_eligible(true, false, 0, 0, 0).unwrap_err(),
+            PoolError::OutstandingLoanExists
+        );
+        assert_eq!(
+            validate_exit_eligible(false, true, 0, 0, 0).unwrap_err(),
+            PoolError::OutstandingLoanExists
+        );
+        assert_eq!(
+            validate_exit_eligible(false, false, 1, 0, 0).unwrap_err(),
+            PoolError::ActiveGuaranteesExist
+        );
+        assert_eq!(
+            validate_exit_eligible(false, false, 0, 1, 0).unwrap_err(),
+            PoolError::ActiveGuaranteesExist
+        );
+        assert_eq!(
+            validate_exit_eligible(false, false, 0, 0, 1).unwrap_err(),
+            PoolError::PendingGuaranteesExist
+        );
+    }
 }

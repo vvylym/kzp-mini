@@ -4,10 +4,8 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 use crate::error::PoolError;
-use crate::operations::{
-    apply_repayment, release_active_guarantee, validate_borrower, validate_repayment,
-};
-use crate::state::{Loan, Member, Pool};
+use crate::operations::release_active_guarantee;
+use crate::state::{Loan, LoanStatus, Member, Pool};
 use crate::utils::seeds::{MEMBER_SEED, VAULT_SEED};
 
 /// Accounts required for a borrower to repay an active loan.
@@ -126,4 +124,76 @@ pub fn handle_repay_loan(ctx: Context<RepayLoan>, amount: u64) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn validate_borrower(signer: Pubkey, loan_borrower: Pubkey) -> std::result::Result<(), PoolError> {
+    if signer != loan_borrower {
+        return Err(PoolError::NotLoanBorrower);
+    }
+    Ok(())
+}
+
+fn validate_repayment(
+    status: LoanStatus,
+    outstanding: u64,
+    amount: u64,
+) -> std::result::Result<(), PoolError> {
+    if status != LoanStatus::Active {
+        return Err(PoolError::LoanNotActive);
+    }
+    if amount == 0 {
+        return Err(PoolError::RepaymentAmountMustBePositive);
+    }
+    if amount > outstanding {
+        return Err(PoolError::RepaymentExceedsOutstanding);
+    }
+    Ok(())
+}
+
+fn apply_repayment(
+    outstanding: u64,
+    amount: u64,
+) -> std::result::Result<(u64, bool), ProgramError> {
+    let new_outstanding = outstanding
+        .checked_sub(amount)
+        .ok_or(ProgramError::ArithmeticOverflow)?;
+    Ok((new_outstanding, new_outstanding == 0))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn borrower_check() {
+        let borrower = Pubkey::new_unique();
+        assert!(validate_borrower(borrower, borrower).is_ok());
+        assert_eq!(
+            validate_borrower(Pubkey::new_unique(), borrower).unwrap_err(),
+            PoolError::NotLoanBorrower
+        );
+    }
+
+    #[test]
+    fn repayment_validation() {
+        assert!(validate_repayment(LoanStatus::Active, 1_000, 500).is_ok());
+        assert_eq!(
+            validate_repayment(LoanStatus::Repaid, 0, 1).unwrap_err(),
+            PoolError::LoanNotActive
+        );
+        assert_eq!(
+            validate_repayment(LoanStatus::Active, 100, 200).unwrap_err(),
+            PoolError::RepaymentExceedsOutstanding
+        );
+        assert_eq!(
+            validate_repayment(LoanStatus::Active, 100, 0).unwrap_err(),
+            PoolError::RepaymentAmountMustBePositive
+        );
+    }
+
+    #[test]
+    fn apply_repayment_math() {
+        assert_eq!(apply_repayment(1_000, 400).unwrap(), (600, false));
+        assert_eq!(apply_repayment(500, 500).unwrap(), (0, true));
+    }
 }

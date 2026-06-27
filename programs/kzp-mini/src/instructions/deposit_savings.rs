@@ -4,7 +4,6 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 use crate::error::PoolError;
-use crate::operations::validate_positive_amount;
 use crate::state::{Member, Pool};
 use crate::utils::seeds::{MEMBER_SEED, VAULT_SEED};
 
@@ -52,7 +51,7 @@ pub struct DepositSavings<'info> {
 
 /// Transfers tokens to the vault and credits member and pool savings ledgers.
 pub fn handle_deposit_savings(ctx: Context<DepositSavings>, amount: u64) -> Result<()> {
-    validate_positive_amount(amount)?;
+    require!(amount > 0, PoolError::DepositAmountMustBePositive);
 
     token::transfer(
         CpiContext::new(
