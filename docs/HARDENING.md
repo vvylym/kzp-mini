@@ -31,7 +31,7 @@ Status values:
 | H-016 | UC-8 | Odd outstanding amounts split deterministically and reconcile exactly. | `tests/src/test_settle_default.rs` | pass: `cargo test -p kzp-tests settle_default` | green | `test(defaults): cover settlement accounting edges` |
 | H-017 | UC-8 | Default settlement releases guarantee obligations and clears only the matching active loan. | `tests/src/test_settle_default.rs` | pass: `cargo test -p kzp-tests settle_default` | green | `test(defaults): cover settlement accounting edges` |
 | H-018 | UC-9 | A member cannot exit while guarantor liability is reserved. | `tests/src/test_exit_pool.rs` | pass: `cargo test -p kzp-tests exit_pool_fails_with_active_guarantees` | green | `fix(guarantees): reserve default liability` |
-| H-019 | UC-9 | Under-funded vault exit fails without mutating member or pool totals. | `tests/src/test_exit_pool.rs` | planned | planned | pending |
+| H-019 | UC-9 | Under-funded vault exit fails without mutating member or pool totals. | `tests/src/test_exit_pool.rs` | pass: `cargo test -p kzp-tests exit_pool` | green | `test(exit): cover underfunded vault failure` |
 | H-020 | CLI | CLI refuses to deserialize pool or loan accounts not owned by this program. | `cli/src/accounts.rs` | pass: `cargo test -p kzp-cli owner_check` | green | `fix(cli): validate fetched account owners` |
 | H-021 | UC-9 | A member with a pending borrower loan cannot exit the pool. | `tests/src/test_exit_pool.rs` | pass: `cargo test -p kzp-tests exit_pool_fails_with_pending_borrower_loan` | green | `fix(loans): reserve pending borrower capacity` |
 

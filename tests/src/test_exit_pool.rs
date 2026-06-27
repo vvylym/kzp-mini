@@ -1,5 +1,5 @@
 use crate::helpers::{initialized_pool, member_with_savings, TestApp};
-use kzp_mini::utils::pda::member_pda;
+use kzp_mini::utils::pda::{member_pda, vault_pda};
 use kzp_mini::PoolError;
 use solana_sdk::{pubkey::Pubkey, signature::Signer};
 
@@ -41,6 +41,47 @@ with_universe!(exit_pool_nominal, |app, u| {
         balance_before + 2_000_000_000
     );
 });
+
+// Spec: edge - under-funded vault exit fails without mutating pool or member state.
+//
+// Given:
+// - A pool member with savings and no obligations
+// - The pool vault SPL balance is lower than the member's recorded savings
+//
+// When:
+// - Member calls `exit_pool`
+//
+// Then:
+// - Transaction fails with `InsufficientVaultLiquidity` and member/pool/account balances are unchanged
+with_universe!(
+    exit_pool_fails_when_vault_underfunded_without_mutation,
+    |app, u| {
+        let savings = 2_000_000_000;
+        let (carol, carol_ata) = member_with_savings(app, u.pool, savings).await;
+        let (member_key, _) = member_pda(&u.pool, &carol.pubkey());
+        let (vault, _) = vault_pda(&u.pool);
+
+        let pool_before = app.fetch_pool(&u.pool).await;
+        let member_before = app.fetch_member(&member_key).await;
+        let carol_balance_before = app.token_balance(&carol_ata).await;
+        app.overwrite_token_amount(&vault, savings - 1).await;
+
+        let ix = app.exit_pool(&carol, u.pool, carol_ata);
+        app.process_expect_custom_err(&[ix], &[&carol], PoolError::InsufficientVaultLiquidity)
+            .await;
+
+        let pool_after = app.fetch_pool(&u.pool).await;
+        let member_after = app.fetch_member(&member_key).await;
+
+        assert!(app.account_exists(&member_key).await);
+        assert_eq!(pool_after.total_members, pool_before.total_members);
+        assert_eq!(pool_after.total_savings, pool_before.total_savings);
+        assert_eq!(member_after.savings_balance, member_before.savings_balance);
+        assert_eq!(member_after.locked_savings, member_before.locked_savings);
+        assert_eq!(app.token_balance(&carol_ata).await, carol_balance_before);
+        assert_eq!(app.token_balance(&vault).await, savings - 1);
+    }
+);
 
 // Spec: edge - member with outstanding loan cannot exit (`OutstandingLoanExists`).
 //
