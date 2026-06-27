@@ -103,14 +103,14 @@ pub mod kzp_mini {
     ///
     /// The signing guarantor must be `loan.guarantor_a` or `loan.guarantor_b`.
     /// Disbursement runs automatically once both flags are set and the vault has liquidity.
-    pub fn co_sign_loan(ctx: Context<CoSignLoan>) -> Result<()> {
+    pub fn co_sign_loan<'info>(ctx: Context<'info, CoSignLoan<'info>>) -> Result<()> {
         handle_co_sign_loan(ctx)
     }
 
     /// Repays an active loan partially or in full.
     ///
     /// * `amount` - SPL tokens sent to the vault (must be > 0 and ≤ outstanding).
-    pub fn repay_loan(ctx: Context<RepayLoan>, amount: u64) -> Result<()> {
+    pub fn repay_loan<'info>(ctx: Context<'info, RepayLoan<'info>>, amount: u64) -> Result<()> {
         handle_repay_loan(ctx, amount)
     }
 

@@ -26,16 +26,6 @@ pub struct RepayLoan<'info> {
     )]
     pub pool: Account<'info, Pool>,
 
-    /// Borrower's member account (clears `active_loan` when fully repaid).
-    #[account(
-        mut,
-        seeds = [MEMBER_SEED, loan.pool.as_ref(), borrower.key().as_ref()],
-        bump = borrower_member.bump,
-        constraint = borrower_member.owner == borrower.key(),
-        constraint = borrower_member.pool == loan.pool,
-    )]
-    pub borrower_member: Box<Account<'info, Member>>,
-
     /// Pool vault receiving the repayment.
     #[account(
         mut,
@@ -53,35 +43,19 @@ pub struct RepayLoan<'info> {
     )]
     pub borrower_token_account: Account<'info, TokenAccount>,
 
-    /// Guarantor A member account (guarantee cleared on full repayment).
-    #[account(
-        mut,
-        seeds = [MEMBER_SEED, loan.pool.as_ref(), loan.guarantor_a.as_ref()],
-        bump = guarantor_a_member.bump,
-        constraint = guarantor_a_member.owner == loan.guarantor_a,
-        constraint = guarantor_a_member.pool == loan.pool,
-    )]
-    pub guarantor_a_member: Box<Account<'info, Member>>,
-
-    /// Guarantor B member account (guarantee cleared on full repayment).
-    #[account(
-        mut,
-        seeds = [MEMBER_SEED, loan.pool.as_ref(), loan.guarantor_b.as_ref()],
-        bump = guarantor_b_member.bump,
-        constraint = guarantor_b_member.owner == loan.guarantor_b,
-        constraint = guarantor_b_member.pool == loan.pool,
-    )]
-    pub guarantor_b_member: Box<Account<'info, Member>>,
-
     /// SPL Token program.
     pub token_program: Program<'info, Token>,
 }
 
 /// Transfers repayment to vault and updates loan, pool, and guarantee state.
-pub fn handle_repay_loan(ctx: Context<RepayLoan>, amount: u64) -> Result<()> {
+pub fn handle_repay_loan<'info>(ctx: Context<'info, RepayLoan<'info>>, amount: u64) -> Result<()> {
     let loan = &mut ctx.accounts.loan;
     validate_borrower(ctx.accounts.borrower.key(), loan.borrower)?;
     validate_repayment(loan.status.clone(), loan.outstanding, amount)?;
+    let (new_outstanding, fully_repaid) = apply_repayment(loan.outstanding, amount)?;
+    if fully_repaid {
+        validate_repayment_finalization_accounts(ctx.program_id, loan, ctx.remaining_accounts)?;
+    }
 
     token::transfer(
         CpiContext::new(
@@ -95,7 +69,7 @@ pub fn handle_repay_loan(ctx: Context<RepayLoan>, amount: u64) -> Result<()> {
         amount,
     )?;
 
-    let (new_outstanding, fully_repaid) = apply_repayment(loan.outstanding, amount)?;
+    let loan = &mut ctx.accounts.loan;
     loan.outstanding = new_outstanding;
 
     let pool = &mut ctx.accounts.pool;
@@ -105,23 +79,101 @@ pub fn handle_repay_loan(ctx: Context<RepayLoan>, amount: u64) -> Result<()> {
         .ok_or(ProgramError::ArithmeticOverflow)?;
 
     if fully_repaid {
-        loan.status = crate::state::LoanStatus::Repaid;
-
-        let loan_key = loan.key();
-        if ctx.accounts.borrower_member.active_loan == Some(loan_key) {
-            ctx.accounts.borrower_member.active_loan = None;
-        }
-        release_active_guarantee(
-            &mut ctx.accounts.guarantor_a_member,
-            loan.guarantor_a_locked_savings,
-        )?;
-        release_active_guarantee(
-            &mut ctx.accounts.guarantor_b_member,
-            loan.guarantor_b_locked_savings,
-        )?;
-        loan.guarantor_a_locked_savings = 0;
-        loan.guarantor_b_locked_savings = 0;
+        finalize_repayment(ctx)?;
     }
+
+    Ok(())
+}
+
+fn validate_repayment_finalization_accounts<'info>(
+    program_id: &Pubkey,
+    loan: &Loan,
+    remaining_accounts: &'info [AccountInfo<'info>],
+) -> Result<()> {
+    let [
+        borrower_member_info,
+        guarantor_a_member_info,
+        guarantor_b_member_info,
+    ] = remaining_accounts
+    else {
+        return err!(PoolError::MissingRepaymentFinalizationAccounts);
+    };
+
+    let borrower_member = Account::<Member>::try_from(borrower_member_info)?;
+    let guarantor_a_member = Account::<Member>::try_from(guarantor_a_member_info)?;
+    let guarantor_b_member = Account::<Member>::try_from(guarantor_b_member_info)?;
+
+    validate_member_account(
+        program_id,
+        &borrower_member,
+        loan.pool,
+        loan.borrower,
+        PoolError::InvalidRemainingAccounts,
+    )?;
+    validate_member_account(
+        program_id,
+        &guarantor_a_member,
+        loan.pool,
+        loan.guarantor_a,
+        PoolError::InvalidRemainingAccounts,
+    )?;
+    validate_member_account(
+        program_id,
+        &guarantor_b_member,
+        loan.pool,
+        loan.guarantor_b,
+        PoolError::InvalidRemainingAccounts,
+    )?;
+
+    Ok(())
+}
+
+fn validate_member_account(
+    program_id: &Pubkey,
+    member: &Account<Member>,
+    pool: Pubkey,
+    owner: Pubkey,
+    error: PoolError,
+) -> Result<()> {
+    let (expected_member, _) =
+        Pubkey::find_program_address(&[MEMBER_SEED, pool.as_ref(), owner.as_ref()], program_id);
+    require_keys_eq!(member.key(), expected_member, error);
+    require!(
+        member.owner == owner && member.pool == pool,
+        PoolError::InvalidRemainingAccounts
+    );
+    Ok(())
+}
+
+fn finalize_repayment<'info>(ctx: Context<'info, RepayLoan<'info>>) -> Result<()> {
+    let [
+        borrower_member_info,
+        guarantor_a_member_info,
+        guarantor_b_member_info,
+    ] = ctx.remaining_accounts
+    else {
+        return err!(PoolError::MissingRepaymentFinalizationAccounts);
+    };
+
+    let mut borrower_member = Account::<Member>::try_from(borrower_member_info)?;
+    let mut guarantor_a_member = Account::<Member>::try_from(guarantor_a_member_info)?;
+    let mut guarantor_b_member = Account::<Member>::try_from(guarantor_b_member_info)?;
+
+    let loan = &mut ctx.accounts.loan;
+    loan.status = crate::state::LoanStatus::Repaid;
+
+    let loan_key = loan.key();
+    if borrower_member.active_loan == Some(loan_key) {
+        borrower_member.active_loan = None;
+    }
+    release_active_guarantee(&mut guarantor_a_member, loan.guarantor_a_locked_savings)?;
+    release_active_guarantee(&mut guarantor_b_member, loan.guarantor_b_locked_savings)?;
+    loan.guarantor_a_locked_savings = 0;
+    loan.guarantor_b_locked_savings = 0;
+
+    borrower_member.exit(ctx.program_id)?;
+    guarantor_a_member.exit(ctx.program_id)?;
+    guarantor_b_member.exit(ctx.program_id)?;
 
     Ok(())
 }

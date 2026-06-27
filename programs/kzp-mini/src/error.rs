@@ -102,4 +102,13 @@ pub enum PoolError {
     /// Default settlement attempted before the loan due date.
     #[msg("Loan is not due for default settlement")]
     LoanNotDue,
+    /// Co-sign activation omitted required remaining accounts.
+    #[msg("Missing co-sign activation accounts")]
+    MissingActivationAccounts,
+    /// Repayment finalization omitted required remaining accounts.
+    #[msg("Missing repayment finalization accounts")]
+    MissingRepaymentFinalizationAccounts,
+    /// Remaining accounts do not match the expected loan-derived addresses.
+    #[msg("Remaining accounts do not match the expected loan accounts")]
+    InvalidRemainingAccounts,
 }

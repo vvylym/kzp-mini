@@ -206,6 +206,32 @@ with_universe!(
     }
 );
 
+// Spec: edge - full repayment must include finalization accounts.
+//
+// Given:
+// - An active loan whose full outstanding balance is being repaid
+//
+// When:
+// - The borrower submits only the base partial-repayment account set
+//
+// Then:
+// - Transaction fails before token transfer with `MissingRepaymentFinalizationAccounts`
+with_universe!(
+    repay_loan_fails_when_finalization_accounts_missing,
+    universe(1_000_000_000),
+    |app, u| {
+        let ix = app
+            .repay_loan_base_only(&u.borrower, u.loan, u.borrower_ata, u.amount)
+            .await;
+        app.process_expect_custom_err(
+            &[ix],
+            &[&u.borrower],
+            PoolError::MissingRepaymentFinalizationAccounts,
+        )
+        .await;
+    }
+);
+
 // Spec: edge - zero repayment amount (`RepaymentAmountMustBePositive`).
 //
 // Given:

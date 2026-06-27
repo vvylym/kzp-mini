@@ -254,6 +254,35 @@ with_universe!(
     }
 );
 
+// Spec: edge - the second co-sign must include activation accounts.
+//
+// Given:
+// - Guarantor A already provided the first co-sign
+//
+// When:
+// - Guarantor B provides the second co-sign with only the base partial account set
+//
+// Then:
+// - Transaction fails before activation with `MissingActivationAccounts`
+with_universe!(
+    co_sign_loan_fails_when_activation_accounts_missing,
+    |app, u| {
+        let loan_key = u.pending_loan(app, 13, 1_000_000_000).await;
+        let ix_a = app
+            .co_sign_loan(&u.guarantor_a, loan_key, u.borrower_ata)
+            .await;
+        app.process(&[ix_a], &[&u.guarantor_a]).await;
+
+        let ix_b = app.co_sign_loan_base_only(&u.guarantor_b, loan_key).await;
+        app.process_expect_custom_err(
+            &[ix_b],
+            &[&u.guarantor_b],
+            PoolError::MissingActivationAccounts,
+        )
+        .await;
+    }
+);
+
 // Spec: edge - activation cannot overwrite an existing borrower active loan.
 //
 // Given:
