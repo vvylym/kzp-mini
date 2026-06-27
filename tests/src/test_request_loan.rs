@@ -292,6 +292,38 @@ with_universe!(request_loan_fails_when_guarantor_not_member, |app, u| {
     app.process_expect_err(&[ix], &[&u.borrower]).await;
 });
 
+// Spec: defensive - guarantor member PDA owner field must match nominated guarantor.
+//
+// Given:
+// - A valid guarantor member PDA whose stored owner field has drifted
+//
+// When:
+// - Borrower nominates that guarantor
+//
+// Then:
+// - Transaction fails with `GuarantorNotMember` before opening the loan
+with_universe!(
+    request_loan_fails_when_guarantor_member_owner_mismatches,
+    |app, u| {
+        let (guarantor_member, _) = member_pda(&u.pool, &u.guarantor_a.pubkey());
+        let mut guarantor_state = app.fetch_member(&guarantor_member).await;
+        guarantor_state.owner = Pubkey::new_unique();
+        app.overwrite_member(&guarantor_member, &guarantor_state)
+            .await;
+
+        let ix = app.request_loan(
+            &u.borrower,
+            u.pool,
+            42,
+            1_000_000_000,
+            u.guarantor_a.pubkey(),
+            u.guarantor_b.pubkey(),
+        );
+        app.process_expect_custom_err(&[ix], &[&u.borrower], PoolError::GuarantorNotMember)
+            .await;
+    }
+);
+
 // Spec: edge - guarantor already has an active loan (`GuarantorHasActiveLoan`).
 //
 // Given:

@@ -31,7 +31,7 @@ Defined in `programs/kzp-mini/src/error.rs` as `PoolError`.
 | 6024 | InsufficientVaultLiquidity | Vault under-funded at disbursement or exit |
 | 6025 | NotPoolAdmin | Non-admin default settlement |
 | 6026 | GuarantorInsufficientSavings | Default share exceeds savings ledger |
-| 6027 | GuarantorInsufficientTokens | Default share exceeds guarantor ATA balance |
+| 6027 | GuarantorInsufficientTokens | Reserved obsolete slot; defaults no longer debit guarantor ATAs |
 | 6028 | PoolNameTooLong | Pool name exceeds 32-byte PDA seed limit |
 | 6029 | ExistingPendingLoan | Borrower has pending loan |
 | 6030 | InvalidLoanTerm | Loan term is negative |

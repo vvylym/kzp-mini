@@ -29,13 +29,13 @@ KZP Mini tracks two parallel views of pool money: the **SPL vault** (actual toke
 ## Guarantee liability
 
 - While **Pending:** guarantor obligations live in `pending_guarantees`; either party can unwind via `cancel_loan` / `withdraw_cosign`.
-- After disbursement:** obligations move to `active_guarantees`; guarantors cannot exit until cleared.
+- After **disbursement:** obligations move to `active_guarantees`; guarantor savings liability is reserved in `locked_savings`, and guarantors cannot exit until cleared.
 
 ## Default settlement
 
 - Admin calls `settle_default` on an **Active** loan.
 - Outstanding principal split **50/50** between guarantors (`div_ceil` on odd amounts).
-- Each guarantor debited on the savings **ledger** and must sign SPL transfer to the vault.
+- Each guarantor is debited on the savings **ledger** from already-reserved liability; no fresh guarantor signature or SPL transfer is required.
 
 ## Fail-closed checks
 

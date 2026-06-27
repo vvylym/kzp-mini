@@ -182,6 +182,56 @@ with_universe!(
     }
 );
 
+// Spec: defensive - settlement member accounts must still record the loan's pool.
+//
+// Given:
+// - An active loan ready for default settlement
+// - One guarantor member PDA has a drifted `pool` field
+//
+// When:
+// - Admin calls `settle_default`
+//
+// Then:
+// - Transaction fails before ledger state is mutated
+with_universe!(
+    settle_default_fails_when_guarantor_member_pool_mismatches,
+    |app, u| {
+        let amount = 600_000_000;
+        let loan_key = app
+            .activate_loan_with_term(
+                &u.borrower,
+                u.pool,
+                36,
+                amount,
+                &u.guarantor_a,
+                &u.guarantor_b,
+                u.borrower_ata,
+                0,
+            )
+            .await;
+
+        let pool_before = app.fetch_pool(&u.pool).await;
+        let loan_before = app.fetch_loan(&loan_key).await;
+        let (ga_member, _) = member_pda(&u.pool, &u.guarantor_a.pubkey());
+        let mut ga_state = app.fetch_member(&ga_member).await;
+        ga_state.pool = Pubkey::new_unique();
+        app.overwrite_member(&ga_member, &ga_state).await;
+
+        let ix = app.settle_default(&u.admin, loan_key).await;
+        app.process_expect_err(&[ix], &[&u.admin]).await;
+
+        let pool_after = app.fetch_pool(&u.pool).await;
+        let loan_after = app.fetch_loan(&loan_key).await;
+        assert_eq!(
+            pool_after.total_outstanding_loans,
+            pool_before.total_outstanding_loans
+        );
+        assert_eq!(pool_after.total_savings, pool_before.total_savings);
+        assert_eq!(loan_after.status, loan_before.status);
+        assert_eq!(loan_after.outstanding, loan_before.outstanding);
+    }
+);
+
 // Spec: edge - default before due date is rejected (`LoanNotDue`).
 //
 // Given:

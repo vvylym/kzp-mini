@@ -226,17 +226,17 @@ BDD-style scenarios. **55 integration tests** in `tests/src/test_*.rs` mirror th
 
 ### Nominal
 
-- **Given** active loan with outstanding O, each guarantor savings ≥ share and ATAs funded
-- **When** admin calls `settle_default` with both guarantors signing
-- **Then** loan → `Defaulted`, savings reduced 50/50, vault receives O tokens, counters updated
+- **Given** active loan with outstanding O, each guarantor savings ≥ share and liability already reserved
+- **When** admin calls `settle_default` after the due date
+- **Then** loan → `Defaulted`, savings ledger reduced 50/50, outstanding zeroed, counters updated
 
 ### Edge - non-admin
 
 - **Then** `NotPoolAdmin`
 
-### Edge - insufficient guarantor savings or tokens
+### Edge - insufficient guarantor savings
 
-- **Then** `GuarantorInsufficientSavings` or `GuarantorInsufficientTokens`
+- **Then** `GuarantorInsufficientSavings`
 
 ### Edge - default before due date
 

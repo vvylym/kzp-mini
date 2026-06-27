@@ -2,6 +2,7 @@
 
 use anchor_lang::prelude::*;
 
+use crate::error::PoolError;
 use crate::state::{Loan, Member, Pool};
 use crate::utils::seeds::{LOAN_SEED, MEMBER_SEED};
 
@@ -45,7 +46,8 @@ pub struct RequestLoan<'info> {
     #[account(
         seeds = [MEMBER_SEED, pool.key().as_ref(), guarantor_a.key().as_ref()],
         bump = guarantor_a_member.bump,
-        constraint = guarantor_a_member.pool == pool.key() @ crate::error::PoolError::GuarantorNotMember,
+        constraint = guarantor_a_member.owner == guarantor_a.key() @ PoolError::GuarantorNotMember,
+        constraint = guarantor_a_member.pool == pool.key() @ PoolError::GuarantorNotMember,
     )]
     pub guarantor_a_member: Account<'info, Member>,
 
@@ -57,7 +59,8 @@ pub struct RequestLoan<'info> {
     #[account(
         seeds = [MEMBER_SEED, pool.key().as_ref(), guarantor_b.key().as_ref()],
         bump = guarantor_b_member.bump,
-        constraint = guarantor_b_member.pool == pool.key() @ crate::error::PoolError::GuarantorNotMember,
+        constraint = guarantor_b_member.owner == guarantor_b.key() @ PoolError::GuarantorNotMember,
+        constraint = guarantor_b_member.pool == pool.key() @ PoolError::GuarantorNotMember,
     )]
     pub guarantor_b_member: Account<'info, Member>,
 

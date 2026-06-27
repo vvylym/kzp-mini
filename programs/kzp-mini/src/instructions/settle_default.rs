@@ -35,6 +35,7 @@ pub struct SettleDefault<'info> {
         seeds = [MEMBER_SEED, loan.pool.as_ref(), loan.borrower.as_ref()],
         bump = borrower_member.bump,
         constraint = borrower_member.owner == loan.borrower,
+        constraint = borrower_member.pool == loan.pool,
     )]
     pub borrower_member: Box<Account<'info, Member>>,
 
@@ -44,6 +45,7 @@ pub struct SettleDefault<'info> {
         seeds = [MEMBER_SEED, loan.pool.as_ref(), loan.guarantor_a.as_ref()],
         bump = guarantor_a_member.bump,
         constraint = guarantor_a_member.owner == loan.guarantor_a,
+        constraint = guarantor_a_member.pool == loan.pool,
     )]
     pub guarantor_a_member: Box<Account<'info, Member>>,
 
@@ -53,6 +55,7 @@ pub struct SettleDefault<'info> {
         seeds = [MEMBER_SEED, loan.pool.as_ref(), loan.guarantor_b.as_ref()],
         bump = guarantor_b_member.bump,
         constraint = guarantor_b_member.owner == loan.guarantor_b,
+        constraint = guarantor_b_member.pool == loan.pool,
     )]
     pub guarantor_b_member: Box<Account<'info, Member>>,
 }

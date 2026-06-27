@@ -26,7 +26,7 @@ KZP Minimal is an on-chain mutual-aid pool: members deposit SPL tokens, borrow a
 | **Vault liquidity (exit)** | `InsufficientVaultLiquidity` if `vault.amount < member.savings_balance` (fail-closed when ledger exceeds physical vault) |
 | **Pending cleanup** | `cancel_loan` (borrower) and `withdraw_cosign` (guarantor) while `Pending` |
 | **Exit** | Blocked for `active_loan`, `active_guarantees`, or `pending_guarantees` |
-| **Default** | Admin-only `settle_default`; 50/50 from guarantor savings ledger **and** SPL transfer from guarantor ATAs to vault |
+| **Default** | Admin-only `settle_default`; 50/50 from already-reserved guarantor savings ledger liability, with no fresh guarantor signatures |
 | **PDAs** | Pool, vault, member, loan accounts use canonical seeds; vault bump stored on loan at request |
 
 ## Co-sign lifecycle
