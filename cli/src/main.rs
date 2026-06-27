@@ -106,6 +106,9 @@ enum LoanCommands {
         guarantor_a: String,
         #[arg(long)]
         guarantor_b: String,
+        /// Loan term before admin default is allowed, in seconds (defaults to 30 days).
+        #[arg(long, default_value_t = 30 * 24 * 60 * 60)]
+        term_seconds: i64,
     },
     /// Co-sign a pending loan (pool and borrower are read from the loan account).
     Cosign {
@@ -132,16 +135,12 @@ enum LoanCommands {
         #[arg(long)]
         loan: String,
     },
-    /// Admin marks an active loan as defaulted (50/50 from guarantor savings + SPL to vault).
+    /// Admin marks an active loan as defaulted after due date.
     SettleDefault {
         #[arg(long)]
         loan: String,
         #[arg(long)]
         pool: String,
-        #[arg(long)]
-        guarantor_a_wallet: String,
-        #[arg(long)]
-        guarantor_b_wallet: String,
     },
 }
 
@@ -173,27 +172,25 @@ fn main() -> Result<()> {
                 amount,
                 guarantor_a,
                 guarantor_b,
-            } => {
-                commands::loan::request_loan(&ctx, &pool, nonce, amount, &guarantor_a, &guarantor_b)
-            }
+                term_seconds,
+            } => commands::loan::request_loan(
+                &ctx,
+                &pool,
+                nonce,
+                amount,
+                &guarantor_a,
+                &guarantor_b,
+                term_seconds,
+            ),
             LoanCommands::Cosign { loan, borrower_ata } => {
                 commands::loan::co_sign_loan(&ctx, &loan, borrower_ata.as_deref())
             }
             LoanCommands::Repay { loan, amount } => commands::loan::repay_loan(&ctx, &loan, amount),
             LoanCommands::Cancel { loan } => commands::loan::cancel_loan(&ctx, &loan),
             LoanCommands::WithdrawCosign { loan } => commands::loan::withdraw_cosign(&ctx, &loan),
-            LoanCommands::SettleDefault {
-                loan,
-                pool,
-                guarantor_a_wallet,
-                guarantor_b_wallet,
-            } => commands::loan::settle_default(
-                &ctx,
-                &loan,
-                &pool,
-                &guarantor_a_wallet,
-                &guarantor_b_wallet,
-            ),
+            LoanCommands::SettleDefault { loan, pool } => {
+                commands::loan::settle_default(&ctx, &loan, &pool)
+            }
         },
     }
 }

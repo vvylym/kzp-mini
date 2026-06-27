@@ -25,6 +25,7 @@ pub fn request_loan(
     amount: u64,
     guarantor_a: &str,
     guarantor_b: &str,
+    term_seconds: i64,
 ) -> Result<()> {
     let pool = parse_pubkey("pool", pool_str)?;
     let borrower = ctx.client.payer();
@@ -54,6 +55,7 @@ pub fn request_loan(
         data: instruction::RequestLoan {
             loan_nonce: nonce,
             amount,
+            loan_term_seconds: term_seconds,
         }
         .data(),
     });
@@ -240,14 +242,8 @@ pub fn withdraw_cosign(ctx: &CommandContext, loan_str: &str) -> Result<()> {
     Ok(())
 }
 
-/// Admin settles an active loan as defaulted (50/50 from guarantor savings ledger + SPL to vault).
-pub fn settle_default(
-    ctx: &CommandContext,
-    loan_str: &str,
-    pool_str: &str,
-    guarantor_a_wallet: &str,
-    guarantor_b_wallet: &str,
-) -> Result<()> {
+/// Admin settles an active loan as defaulted from reserved guarantor savings.
+pub fn settle_default(ctx: &CommandContext, loan_str: &str, pool_str: &str) -> Result<()> {
     let loan = parse_pubkey("loan", loan_str)?;
     let pool = parse_pubkey("pool", pool_str)?;
     let admin = ctx.client.payer();
@@ -258,34 +254,14 @@ pub fn settle_default(
     let (borrower_member, _) = member_pda(&pool, &borrower);
     let (guarantor_a_member, _) = member_pda(&pool, &guarantor_a);
     let (guarantor_b_member, _) = member_pda(&pool, &guarantor_b);
-    let (vault, _) = vault_pda(&pool);
-
-    let mint = fetch_mint(ctx, pool)?;
-    let guarantor_a_token = Pubkey::new_from_array(
-        get_associated_token_address(&anchor_pubkey(guarantor_a), &anchor_pubkey(mint)).to_bytes(),
-    );
-    let guarantor_b_token = Pubkey::new_from_array(
-        get_associated_token_address(&anchor_pubkey(guarantor_b), &anchor_pubkey(mint)).to_bytes(),
-    );
-
-    let guarantor_a_keypair = solana_sdk::signature::read_keypair_file(guarantor_a_wallet)
-        .map_err(|e| anyhow::anyhow!("failed to read guarantor_a wallet: {e}"))?;
-    let guarantor_b_keypair = solana_sdk::signature::read_keypair_file(guarantor_b_wallet)
-        .map_err(|e| anyhow::anyhow!("failed to read guarantor_b wallet: {e}"))?;
 
     let accounts = accounts::SettleDefault {
         admin: anchor_pubkey(admin.pubkey()),
         pool: anchor_pubkey(pool),
         loan: anchor_pubkey(loan),
         borrower_member: anchor_pubkey(borrower_member),
-        guarantor_a: anchor_pubkey(guarantor_a),
-        guarantor_b: anchor_pubkey(guarantor_b),
         guarantor_a_member: anchor_pubkey(guarantor_a_member),
         guarantor_b_member: anchor_pubkey(guarantor_b_member),
-        vault: anchor_pubkey(vault),
-        guarantor_a_token: anchor_pubkey(guarantor_a_token),
-        guarantor_b_token: anchor_pubkey(guarantor_b_token),
-        token_program: TOKEN_PROGRAM_ID,
     };
 
     let ix = to_sdk_instruction(anchor_lang::solana_program::instruction::Instruction {
@@ -294,11 +270,7 @@ pub fn settle_default(
         data: instruction::SettleDefault {}.data(),
     });
 
-    let sig = ctx.client.send_instructions(
-        &[ix],
-        &[&guarantor_a_keypair, &guarantor_b_keypair],
-        ctx.dry_run,
-    )?;
+    let sig = ctx.client.send_instructions(&[ix], &[admin], ctx.dry_run)?;
     println!("Settled default on loan {loan}");
     if !ctx.dry_run {
         println!("Signature: {sig}");

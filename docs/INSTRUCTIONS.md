@@ -60,11 +60,11 @@ Opens a `Pending` loan with two nominated guarantors.
 | guarantor_a, guarantor_b | | UncheckedAccount; validated via member PDAs |
 | system_program | | |
 
-**Args:** `loan_nonce: u64`, `amount: u64`
+**Args:** `loan_nonce: u64`, `amount: u64`, `loan_term_seconds: i64`
 
 **Rules:** amount ≤ 3× borrower savings; one unresolved loan per borrower (pending or active); guarantors distinct from borrower; each guarantor under guarantee cap (active + pending).
 
-Stores `vault_bump` on the loan for disbursement CPI signing and reserves `member_account.pending_loan`.
+Stores `vault_bump` on the loan for disbursement CPI signing, stores `due_ts`, and reserves `member_account.pending_loan`.
 
 ---
 
@@ -133,11 +133,10 @@ Guarantor revokes a partial co-sign while loan is **Pending**. Clears their `pen
 
 ## `settle_default`
 
-**Admin** initiates. Marks an **Active** loan as defaulted. **Both guarantors must sign** for SPL transfers.
+**Admin** initiates after `loan.due_ts`. Marks an **Active** loan as defaulted from reserved guarantor savings. Guarantors do not sign default settlement because liability was reserved at activation.
 
 - Splits outstanding 50/50 (odd amounts: first guarantor gets ceiling)
 - Deducts shares from each guarantor's `savings_balance`
-- CPI transfer from each guarantor ATA to vault
 - Decrements `pool.total_savings` and `pool.total_outstanding_loans` by outstanding
 - Clears matching borrower `active_loan`, releases guarantor `locked_savings`, and clears guarantor `active_guarantees`
 
@@ -146,12 +145,8 @@ Guarantor revokes a partial co-sign while loan is **Pending**. Clears their `pen
 | admin | | ✓ (must equal `pool.admin`) |
 | pool | ✓ | |
 | loan | ✓ | |
-| guarantor_a, guarantor_b | | ✓ |
 | borrower_member | ✓ | |
 | guarantor_a_member, guarantor_b_member | ✓ | |
-| vault | ✓ | |
-| guarantor_a_token, guarantor_b_token | ✓ | |
-| token_program | | |
 
 Large account struct uses `Box<>` in the Anchor context to stay under BPF stack limits.
 

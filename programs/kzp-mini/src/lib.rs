@@ -15,7 +15,7 @@
 //! | `repay_loan` | Partial or full repayment to the vault |
 //! | `cancel_loan` | Borrower cancels a pending loan |
 //! | `withdraw_cosign` | Guarantor revokes partial co-sign |
-//! | `settle_default` | Admin marks default; 50/50 from guarantor savings + SPL to vault |
+//! | `settle_default` | Admin marks due default; 50/50 from reserved guarantor savings |
 //! | `exit_pool` | Withdraw savings and close the member account |
 //!
 //! ## PDAs
@@ -99,8 +99,13 @@ pub mod kzp_mini {
     ///
     /// * `loan_nonce` - Disambiguates multiple loans per borrower; part of the loan PDA seeds.
     /// * `amount` - Requested principal (max [`constants::MAX_LOAN_MULTIPLIER`] × savings).
-    pub fn request_loan(ctx: Context<RequestLoan>, loan_nonce: u64, amount: u64) -> Result<()> {
-        handlers::request_loan::handle(ctx, loan_nonce, amount)
+    pub fn request_loan(
+        ctx: Context<RequestLoan>,
+        loan_nonce: u64,
+        amount: u64,
+        loan_term_seconds: i64,
+    ) -> Result<()> {
+        handlers::request_loan::handle(ctx, loan_nonce, amount, loan_term_seconds)
     }
 
     /// Co-signs a pending loan; disburses principal when both guarantors sign.
@@ -132,9 +137,9 @@ pub mod kzp_mini {
         handlers::withdraw_cosign::handle(ctx)
     }
 
-    /// Admin marks an active loan defaulted; guarantors cover 50/50 from savings ledger and SPL to vault.
+    /// Admin marks a due active loan defaulted; guarantors cover 50/50 from reserved savings ledger.
     ///
-    /// Requires signatures from `pool.admin`, `loan.guarantor_a`, and `loan.guarantor_b`.
+    /// Requires `pool.admin`; guarantor consent was captured when liability was reserved on activation.
     pub fn settle_default(ctx: Context<SettleDefault>) -> Result<()> {
         handlers::settle_default::handle(ctx)
     }

@@ -24,7 +24,7 @@ Specification and use cases: [../docs/USE_CASES.md](../docs/USE_CASES.md).
 | `test_repay_loan.rs` | Partial/full repay, borrower checks, liability release |
 | `test_cancel_loan.rs` | Borrower cancels pending loan and clears reservations |
 | `test_withdraw_cosign.rs` | Guarantor revokes partial co-sign |
-| `test_settle_default.rs` | Admin default settlement, 50/50 guarantor split |
+| `test_settle_default.rs` | Admin due-date default settlement, reserved-liability split |
 | `test_exit_pool.rs` | Exit nominal, pending/active loan and guarantee blocks |
 
 ## `with_universe!`

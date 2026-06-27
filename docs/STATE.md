@@ -43,6 +43,7 @@ See [Architecture](../README.md#architecture) for how ledger fields relate to th
 | guarantor_a, guarantor_b | Pubkey | Nominated guarantors |
 | guarantor_a_signed, guarantor_b_signed | bool | Partial co-sign flags (while Pending) |
 | status | LoanStatus | Lifecycle |
+| due_ts | i64 | Unix timestamp when admin default settlement is allowed |
 | bump | u8 | Loan PDA bump |
 | vault_bump | u8 | Copied from pool at request (vault CPI signing) |
 

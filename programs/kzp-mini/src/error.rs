@@ -96,4 +96,10 @@ pub enum PoolError {
     /// Borrower already has a pending loan request (`member.pending_loan` is set).
     #[msg("You already have a pending loan")]
     ExistingPendingLoan,
+    /// Loan term would produce an invalid due timestamp.
+    #[msg("Loan term must not be negative")]
+    InvalidLoanTerm,
+    /// Default settlement attempted before the loan due date.
+    #[msg("Loan is not due for default settlement")]
+    LoanNotDue,
 }

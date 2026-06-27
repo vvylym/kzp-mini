@@ -10,10 +10,8 @@ Setup: [GETTING_STARTED.md](./GETTING_STARTED.md).
 # Create pool + vault (prints pool PDA)
 kzp pool initialize --name "Fabryka Lodz KZP" --entry-fee 50 --mint <MINT>
 
-# Mark default; guarantors sign SPL transfers (multi-wallet)
-kzp loan settle-default --loan <LOAN> --pool <POOL> \
-  --guarantor-a-wallet ~/.config/solana/guarantor_a.json \
-  --guarantor-b-wallet ~/.config/solana/guarantor_b.json
+# Mark default after due date from reserved guarantor liability
+kzp loan settle-default --loan <LOAN> --pool <POOL>
 ```
 
 ## Members
@@ -28,7 +26,8 @@ kzp pool exit --pool <POOL>
 
 ```bash
 kzp loan request --pool <POOL> --nonce 1 --amount 500000 \
-  --guarantor-a <PUBKEY_A> --guarantor-b <PUBKEY_B>
+  --guarantor-a <PUBKEY_A> --guarantor-b <PUBKEY_B> \
+  --term-seconds 2592000
 
 kzp loan repay --loan <LOAN> --amount 500000
 kzp loan cancel --loan <LOAN>    # Pending only

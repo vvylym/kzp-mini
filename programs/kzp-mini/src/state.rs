@@ -99,6 +99,8 @@ pub struct Loan {
     pub guarantor_b_signed: bool,
     /// Current lifecycle state of the loan.
     pub status: LoanStatus,
+    /// Unix timestamp when admin default settlement becomes allowed.
+    pub due_ts: i64,
     /// Bump seed for the loan PDA.
     pub bump: u8,
     /// Vault bump copied from the pool at request time for disbursement CPI signing.
@@ -107,7 +109,7 @@ pub struct Loan {
 
 impl Loan {
     /// Account size in bytes including the 8-byte Anchor discriminator.
-    pub const LEN: usize = 8 + 32 + 32 + 8 + 8 + 32 + 32 + 1 + 1 + 1 + 1 + 1;
+    pub const LEN: usize = 8 + 32 + 32 + 8 + 8 + 32 + 32 + 1 + 1 + 1 + 8 + 1 + 1;
 }
 
 /// Lifecycle state of a loan account.

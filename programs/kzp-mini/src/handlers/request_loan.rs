@@ -2,12 +2,24 @@
 
 use anchor_lang::prelude::*;
 
+use crate::error::PoolError;
 use crate::instructions::RequestLoan;
 use crate::operations::validate_loan_request;
 use crate::state::LoanStatus;
 
 /// Validates loan rules and initializes a pending loan account.
-pub fn handle(ctx: Context<RequestLoan>, _loan_nonce: u64, amount: u64) -> Result<()> {
+pub fn handle(
+    ctx: Context<RequestLoan>,
+    _loan_nonce: u64,
+    amount: u64,
+    loan_term_seconds: i64,
+) -> Result<()> {
+    require!(loan_term_seconds >= 0, PoolError::InvalidLoanTerm);
+    let now = Clock::get()?.unix_timestamp;
+    let due_ts = now
+        .checked_add(loan_term_seconds)
+        .ok_or(ProgramError::ArithmeticOverflow)?;
+
     let borrower = &ctx.accounts.member_account;
     validate_loan_request(
         amount,
@@ -35,6 +47,7 @@ pub fn handle(ctx: Context<RequestLoan>, _loan_nonce: u64, amount: u64) -> Resul
     loan.guarantor_a_signed = false;
     loan.guarantor_b_signed = false;
     loan.status = LoanStatus::Pending;
+    loan.due_ts = due_ts;
     loan.bump = ctx.bumps.loan;
     loan.vault_bump = ctx.accounts.pool.vault_bump;
 

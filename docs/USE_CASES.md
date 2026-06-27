@@ -1,6 +1,6 @@
 # Use Cases and Acceptance Criteria
 
-BDD-style scenarios. **54 integration tests** in `tests/src/test_*.rs` mirror these specs (see [tests/README.md](../tests/README.md)).
+BDD-style scenarios. **55 integration tests** in `tests/src/test_*.rs` mirror these specs (see [tests/README.md](../tests/README.md)).
 
 ---
 
