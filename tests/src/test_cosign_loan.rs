@@ -113,6 +113,7 @@ with_universe!(
         let (bob_member, _) = member_pda(&u.pool, &u.borrower.pubkey());
         let bob_member_state = app.fetch_member(&bob_member).await;
         assert_eq!(bob_member_state.active_loan, Some(loan_key));
+        assert!(bob_member_state.pending_loan.is_none());
 
         let (dave_member, _) = member_pda(&u.pool, &u.guarantor_b.pubkey());
         let carol_after = app.fetch_member(&carol_member).await;
@@ -144,6 +145,54 @@ with_universe!(co_sign_loan_fails_when_not_nominated_guarantor, |app, u| {
     app.process_expect_custom_err(&[ix_eve], &[&eve], PoolError::NotNominatedGuarantor)
         .await;
 });
+
+// Spec: edge - guarantor eligibility is rechecked before activation.
+//
+// Given:
+// - Guarantor A was eligible when the borrower requested a loan
+// - Guarantor B has already co-signed
+// - Guarantor A becomes an active borrower before their co-sign
+//
+// When:
+// - Guarantor A tries to provide the second co-sign
+//
+// Then:
+// - Activation fails with `GuarantorHasActiveLoan`
+with_universe!(
+    co_sign_loan_fails_when_guarantor_now_has_active_loan,
+    |app, u| {
+        let loan_key = u.pending_loan(app, 10, 500_000_000).await;
+
+        let ix_b = app
+            .co_sign_loan(&u.guarantor_b, loan_key, u.borrower_ata)
+            .await;
+        app.process(&[ix_b], &[&u.guarantor_b]).await;
+
+        let guarantor_a_ata = app.ata_for(&u.guarantor_a.pubkey());
+        let (other_guarantor_a, _) = member_with_savings(app, u.pool, 2_000_000_000).await;
+        let (other_guarantor_b, _) = member_with_savings(app, u.pool, 2_000_000_000).await;
+        app.activate_loan(
+            &u.guarantor_a,
+            u.pool,
+            11,
+            500_000_000,
+            &other_guarantor_a,
+            &other_guarantor_b,
+            guarantor_a_ata,
+        )
+        .await;
+
+        let ix_a = app
+            .co_sign_loan(&u.guarantor_a, loan_key, u.borrower_ata)
+            .await;
+        app.process_expect_custom_err(
+            &[ix_a],
+            &[&u.guarantor_a],
+            PoolError::GuarantorHasActiveLoan,
+        )
+        .await;
+    }
+);
 
 // Spec: edge - guarantor attempts to co-sign twice (`AlreadyCoSigned`).
 //

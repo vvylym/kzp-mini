@@ -65,6 +65,36 @@ with_universe!(exit_pool_fails_with_outstanding_loan, |app, u| {
         .await;
 });
 
+// Spec: edge - member with pending borrower loan cannot exit (`OutstandingLoanExists`).
+//
+// Given:
+// - Carol has requested a loan that is still pending
+//
+// When:
+// - Carol calls `exit_pool`
+//
+// Then:
+// - Transaction fails with `OutstandingLoanExists`
+with_universe!(exit_pool_fails_with_pending_borrower_loan, |app, u| {
+    let (carol, carol_ata) = member_with_savings(app, u.pool, 2_000_000_000).await;
+    let (dave, _) = member_with_savings(app, u.pool, 2_000_000_000).await;
+    let (eve, _) = member_with_savings(app, u.pool, 2_000_000_000).await;
+
+    let ix_req = app.request_loan(
+        &carol,
+        u.pool,
+        7,
+        1_000_000_000,
+        dave.pubkey(),
+        eve.pubkey(),
+    );
+    app.process(&[ix_req], &[&carol]).await;
+
+    let ix = app.exit_pool(&carol, u.pool, carol_ata);
+    app.process_expect_custom_err(&[ix], &[&carol], PoolError::OutstandingLoanExists)
+        .await;
+});
+
 // Spec: edge - member guaranteeing another loan cannot exit (`ActiveGuaranteesExist`).
 //
 // Given:

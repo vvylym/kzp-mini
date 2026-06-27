@@ -62,6 +62,7 @@ mod tests {
             entry_fee_paid: 0,
             savings_balance: 0,
             active_loan: None,
+            pending_loan: None,
             active_guarantees: Vec::new(),
             pending_guarantees: Vec::new(),
             bump: 0,

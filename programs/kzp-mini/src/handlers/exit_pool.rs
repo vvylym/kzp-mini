@@ -12,6 +12,7 @@ pub fn handle(ctx: Context<ExitPool>) -> Result<()> {
     let member = &ctx.accounts.member_account;
     validate_exit_eligible(
         member.active_loan,
+        member.pending_loan,
         &member.active_guarantees,
         &member.pending_guarantees,
     )?;

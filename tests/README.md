@@ -19,13 +19,13 @@ Specification and use cases: [../docs/USE_CASES.md](../docs/USE_CASES.md).
 | `test_initialize_pool.rs` | Pool + vault creation, name bounds, validation |
 | `test_join_pool.rs` | Entry fee, duplicate member, invalid vault |
 | `test_deposit_savings.rs` | Savings deposits, zero amount |
-| `test_request_loan.rs` | Loan limits, guarantor rules, nonce reuse |
-| `test_cosign_loan.rs` | Partial/full disbursement, co-sign errors |
+| `test_request_loan.rs` | Loan limits, borrower reservation, guarantor rules, nonce reuse |
+| `test_cosign_loan.rs` | Partial/full disbursement, activation rechecks, co-sign errors |
 | `test_repay_loan.rs` | Partial/full repay, borrower checks |
-| `test_cancel_loan.rs` | Borrower cancels pending loan |
+| `test_cancel_loan.rs` | Borrower cancels pending loan and clears reservations |
 | `test_withdraw_cosign.rs` | Guarantor revokes partial co-sign |
 | `test_settle_default.rs` | Admin default settlement, 50/50 guarantor split |
-| `test_exit_pool.rs` | Exit nominal, loan/guarantee blocks |
+| `test_exit_pool.rs` | Exit nominal, pending/active loan and guarantee blocks |
 
 ## `with_universe!`
 

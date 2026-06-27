@@ -1,6 +1,6 @@
 use crate::helpers::{initialized_pool, member_with_savings, TestApp};
 use kzp_mini::state::LoanStatus;
-use kzp_mini::utils::pda::loan_pda;
+use kzp_mini::utils::pda::{loan_pda, member_pda};
 use kzp_mini::PoolError;
 use solana_sdk::{
     pubkey::Pubkey,
@@ -104,6 +104,10 @@ with_universe!(request_loan_nominal, |app, u| {
     assert!(!loan.guarantor_a_signed);
     assert!(!loan.guarantor_b_signed);
     assert_eq!(loan.status, LoanStatus::Pending);
+
+    let (borrower_member, _) = member_pda(&u.pool, &u.borrower.pubkey());
+    let member = app.fetch_member(&borrower_member).await;
+    assert_eq!(member.pending_loan, Some(loan_key));
 });
 
 // Spec: edge - borrower already has an active loan (`ExistingActiveLoan`).
@@ -143,6 +147,34 @@ with_universe!(
     }
 );
 
+// Spec: edge - borrower already has a pending loan (`ExistingPendingLoan`).
+//
+// Given:
+// - A borrower with a pending loan request
+//
+// When:
+// - The same borrower requests another loan with a different nonce
+//
+// Then:
+// - Transaction fails with `ExistingPendingLoan`
+with_universe!(
+    request_loan_fails_when_borrower_has_pending_loan,
+    |app, u| {
+        u.request(app, 3, 500_000_000).await;
+
+        let ix = app.request_loan(
+            &u.borrower,
+            u.pool,
+            4,
+            500_000_000,
+            u.guarantor_a.pubkey(),
+            u.guarantor_b.pubkey(),
+        );
+        app.process_expect_custom_err(&[ix], &[&u.borrower], PoolError::ExistingPendingLoan)
+            .await;
+    }
+);
+
 // Spec: edge - zero loan amount (`LoanAmountMustBePositive`).
 //
 // Given:
@@ -169,7 +201,7 @@ with_universe!(request_loan_fails_on_zero_amount, |app, u| {
 // Spec: edge - amount exceeds savings × max multiplier (`LoanExceedsMaxMultiplier`).
 //
 // Given:
-// - A borrower with 1B savings (max loan 2B at 2× multiplier)
+// - A borrower with 1B savings (max loan 3B at 3× multiplier)
 //
 // When:
 // - Borrower requests 4B

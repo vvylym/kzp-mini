@@ -178,12 +178,14 @@ pub fn cancel_loan(ctx: &CommandContext, loan_str: &str) -> Result<()> {
     let borrower = ctx.client.payer();
     let guarantor_a = Pubkey::new_from_array(loan_state.guarantor_a.to_bytes());
     let guarantor_b = Pubkey::new_from_array(loan_state.guarantor_b.to_bytes());
+    let (borrower_member, _) = member_pda(&pool, &borrower.pubkey());
     let (guarantor_a_member, _) = member_pda(&pool, &guarantor_a);
     let (guarantor_b_member, _) = member_pda(&pool, &guarantor_b);
 
     let accounts = accounts::CancelLoan {
         borrower: anchor_pubkey(borrower.pubkey()),
         loan: anchor_pubkey(loan),
+        borrower_member: anchor_pubkey(borrower_member),
         guarantor_a_member: anchor_pubkey(guarantor_a_member),
         guarantor_b_member: anchor_pubkey(guarantor_b_member),
     };

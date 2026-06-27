@@ -26,6 +26,7 @@ See [Architecture](../README.md#architecture) for how ledger fields relate to th
 | entry_fee_paid | u64 | Fee recorded at join |
 | savings_balance | u64 | Ledger balance (withdrawn on `exit_pool`) |
 | active_loan | Option\<Pubkey\> | Disbursed loan as borrower |
+| pending_loan | Option\<Pubkey\> | Pending loan request as borrower |
 | active_guarantees | Vec\<Pubkey\> | Disbursed loans guaranteed (max 5) |
 | pending_guarantees | Vec\<Pubkey\> | Pending loans co-signed (max 5) |
 | bump | u8 | Member PDA bump |

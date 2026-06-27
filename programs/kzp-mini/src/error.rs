@@ -93,4 +93,7 @@ pub enum PoolError {
     /// Pool name exceeds [`crate::constants::MAX_POOL_NAME_LEN`].
     #[msg("Pool name exceeds maximum supported length")]
     PoolNameTooLong,
+    /// Borrower already has a pending loan request (`member.pending_loan` is set).
+    #[msg("You already have a pending loan")]
+    ExistingPendingLoan,
 }

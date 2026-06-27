@@ -38,9 +38,25 @@ pub fn handle(ctx: Context<CoSignLoan>) -> Result<()> {
     if loan.guarantor_a_signed && loan.guarantor_b_signed {
         validate_vault_liquidity(ctx.accounts.vault.amount, loan.principal)?;
 
+        let borrower_member = &ctx.accounts.borrower_member;
+        require!(
+            borrower_member.active_loan.is_none(),
+            PoolError::ExistingActiveLoan
+        );
+        require!(
+            borrower_member.pending_loan == Some(loan_key),
+            PoolError::ExistingPendingLoan
+        );
+        require!(
+            ctx.accounts.guarantor_a_member.active_loan.is_none()
+                && ctx.accounts.guarantor_b_member.active_loan.is_none(),
+            PoolError::GuarantorHasActiveLoan
+        );
+
         loan.status = LoanStatus::Active;
 
         let borrower_member = &mut ctx.accounts.borrower_member;
+        borrower_member.pending_loan = None;
         borrower_member.active_loan = Some(loan_key);
 
         let guarantor_a = &mut ctx.accounts.guarantor_a_member;

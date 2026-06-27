@@ -36,9 +36,11 @@ pub fn handle(ctx: Context<RepayLoan>, amount: u64) -> Result<()> {
 
     if fully_repaid {
         loan.status = LoanStatus::Repaid;
-        ctx.accounts.borrower_member.active_loan = None;
 
         let loan_key = loan.key();
+        if ctx.accounts.borrower_member.active_loan == Some(loan_key) {
+            ctx.accounts.borrower_member.active_loan = None;
+        }
         ctx.accounts
             .guarantor_a_member
             .active_guarantees

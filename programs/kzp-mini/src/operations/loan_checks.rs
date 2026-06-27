@@ -17,6 +17,7 @@ use crate::state::Member;
 /// * `borrower` - Borrower wallet pubkey (checked against self-guarantee rules).
 /// * `borrower_savings` - Borrower ledger balance used for the max-loan calculation.
 /// * `borrower_has_active_loan` - Whether `member.active_loan` is already set.
+/// * `borrower_has_pending_loan` - Whether `member.pending_loan` is already set.
 /// * `guarantor_a`, `guarantor_b` - Nominated guarantor pubkeys (must differ from borrower and each other).
 /// * `guarantor_a_has_active_loan`, `guarantor_b_has_active_loan` - Whether each guarantor is currently borrowing.
 /// * `guarantor_a_guarantee_count`, `guarantor_b_guarantee_count` - Active + pending guarantee count per guarantor.
@@ -26,6 +27,7 @@ pub fn validate_loan_request(
     borrower: Pubkey,
     borrower_savings: u64,
     borrower_has_active_loan: bool,
+    borrower_has_pending_loan: bool,
     guarantor_a: Pubkey,
     guarantor_b: Pubkey,
     guarantor_a_has_active_loan: bool,
@@ -38,6 +40,9 @@ pub fn validate_loan_request(
     }
     if borrower_has_active_loan {
         return Err(PoolError::ExistingActiveLoan);
+    }
+    if borrower_has_pending_loan {
+        return Err(PoolError::ExistingPendingLoan);
     }
 
     let max_loan = max_loan_for_savings(borrower_savings, MAX_LOAN_MULTIPLIER)
@@ -109,7 +114,7 @@ mod tests {
     fn rejects_zero_amount() {
         let (borrower, ga, gb) = keys();
         assert_eq!(
-            validate_loan_request(0, borrower, 1_000, false, ga, gb, false, false, 0, 0)
+            validate_loan_request(0, borrower, 1_000, false, false, ga, gb, false, false, 0, 0)
                 .unwrap_err(),
             PoolError::LoanAmountMustBePositive
         );
@@ -119,7 +124,7 @@ mod tests {
     fn rejects_excess_multiplier() {
         let (borrower, ga, gb) = keys();
         assert_eq!(
-            validate_loan_request(4_000, borrower, 1_000, false, ga, gb, false, false, 0, 0)
+            validate_loan_request(4_000, borrower, 1_000, false, false, ga, gb, false, false, 0, 0)
                 .unwrap_err(),
             PoolError::LoanExceedsMaxMultiplier
         );
@@ -129,8 +134,10 @@ mod tests {
     fn rejects_self_guarantee() {
         let (borrower, ga, _) = keys();
         assert_eq!(
-            validate_loan_request(100, borrower, 1_000, false, borrower, ga, false, false, 0, 0)
-                .unwrap_err(),
+            validate_loan_request(
+                100, borrower, 1_000, false, false, borrower, ga, false, false, 0, 0
+            )
+            .unwrap_err(),
             PoolError::SelfGuaranteeNotAllowed
         );
     }
@@ -150,9 +157,19 @@ mod tests {
     fn rejects_active_borrower_loan() {
         let (borrower, ga, gb) = keys();
         assert_eq!(
-            validate_loan_request(100, borrower, 1_000, true, ga, gb, false, false, 0, 0)
+            validate_loan_request(100, borrower, 1_000, true, false, ga, gb, false, false, 0, 0)
                 .unwrap_err(),
             PoolError::ExistingActiveLoan
+        );
+    }
+
+    #[test]
+    fn rejects_pending_borrower_loan() {
+        let (borrower, ga, gb) = keys();
+        assert_eq!(
+            validate_loan_request(100, borrower, 1_000, false, true, ga, gb, false, false, 0, 0)
+                .unwrap_err(),
+            PoolError::ExistingPendingLoan
         );
     }
 
@@ -160,7 +177,7 @@ mod tests {
     fn rejects_duplicate_guarantors() {
         let (borrower, ga, _) = keys();
         assert_eq!(
-            validate_loan_request(100, borrower, 1_000, false, ga, ga, false, false, 0, 0)
+            validate_loan_request(100, borrower, 1_000, false, false, ga, ga, false, false, 0, 0)
                 .unwrap_err(),
             PoolError::DuplicateGuarantors
         );
@@ -170,7 +187,7 @@ mod tests {
     fn rejects_guarantor_with_active_loan() {
         let (borrower, ga, gb) = keys();
         assert_eq!(
-            validate_loan_request(100, borrower, 1_000, false, ga, gb, true, false, 0, 0)
+            validate_loan_request(100, borrower, 1_000, false, false, ga, gb, true, false, 0, 0)
                 .unwrap_err(),
             PoolError::GuarantorHasActiveLoan
         );
@@ -184,6 +201,7 @@ mod tests {
                 100,
                 borrower,
                 1_000,
+                false,
                 false,
                 ga,
                 gb,
@@ -200,8 +218,9 @@ mod tests {
     #[test]
     fn accepts_valid_request() {
         let (borrower, ga, gb) = keys();
-        assert!(
-            validate_loan_request(300, borrower, 1_000, false, ga, gb, false, false, 0, 0).is_ok()
-        );
+        assert!(validate_loan_request(
+            300, borrower, 1_000, false, false, ga, gb, false, false, 0, 0
+        )
+        .is_ok());
     }
 }

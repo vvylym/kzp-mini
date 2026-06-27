@@ -14,6 +14,7 @@ pub fn handle(ctx: Context<RequestLoan>, _loan_nonce: u64, amount: u64) -> Resul
         ctx.accounts.borrower.key(),
         borrower.savings_balance,
         borrower.active_loan.is_some(),
+        borrower.pending_loan.is_some(),
         ctx.accounts.guarantor_a.key(),
         ctx.accounts.guarantor_b.key(),
         ctx.accounts.guarantor_a_member.active_loan.is_some(),
@@ -36,6 +37,8 @@ pub fn handle(ctx: Context<RequestLoan>, _loan_nonce: u64, amount: u64) -> Resul
     loan.status = LoanStatus::Pending;
     loan.bump = ctx.bumps.loan;
     loan.vault_bump = ctx.accounts.pool.vault_bump;
+
+    ctx.accounts.member_account.pending_loan = Some(loan.key());
 
     Ok(())
 }

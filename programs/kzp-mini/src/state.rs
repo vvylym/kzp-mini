@@ -45,6 +45,8 @@ pub struct Member {
     pub savings_balance: u64,
     /// Loan PDA pubkey while the member is borrower on a disbursed loan, else `None`.
     pub active_loan: Option<Pubkey>,
+    /// Loan PDA pubkey while the member has a pending loan request, else `None`.
+    pub pending_loan: Option<Pubkey>,
     /// Disbursed loans this member guarantees (blocks exit until cleared).
     pub active_guarantees: Vec<Pubkey>,
     /// Pending loans where this member co-signed before disbursement.
@@ -64,6 +66,7 @@ impl Member {
         + 32
         + 8
         + 8
+        + (1 + 32)
         + (1 + 32)
         + 4
         + (Self::MAX_GUARANTEES * 32)

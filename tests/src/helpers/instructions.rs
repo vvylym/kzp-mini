@@ -209,11 +209,13 @@ impl TestApp {
     pub async fn cancel_loan(&mut self, borrower: &Keypair, loan: Pubkey) -> Instruction {
         let loan_state = self.fetch_loan(&loan).await;
         let pool = loan_state.pool;
+        let (borrower_member, _) = member_pda(&pool, &borrower.pubkey());
         let (guarantor_a_member, _) = member_pda(&pool, &loan_state.guarantor_a);
         let (guarantor_b_member, _) = member_pda(&pool, &loan_state.guarantor_b);
         let accounts = accounts::CancelLoan {
             borrower: borrower.pubkey(),
             loan,
+            borrower_member,
             guarantor_a_member,
             guarantor_b_member,
         };

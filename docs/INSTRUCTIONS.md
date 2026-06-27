@@ -53,7 +53,7 @@ Opens a `Pending` loan with two nominated guarantors.
 | Account | Mut | Signer |
 |---------|-----|--------|
 | borrower | ✓ | ✓ |
-| member_account | | |
+| member_account | ✓ | |
 | pool | | |
 | loan | ✓ | PDA `["loan", pool, borrower, loan_nonce_le]` |
 | guarantor_a_member, guarantor_b_member | | |
@@ -62,9 +62,9 @@ Opens a `Pending` loan with two nominated guarantors.
 
 **Args:** `loan_nonce: u64`, `amount: u64`
 
-**Rules:** amount ≤ 3× borrower savings; one active loan per borrower; guarantors distinct from borrower; each guarantor under guarantee cap (active + pending).
+**Rules:** amount ≤ 3× borrower savings; one unresolved loan per borrower (pending or active); guarantors distinct from borrower; each guarantor under guarantee cap (active + pending).
 
-Stores `vault_bump` on the loan for disbursement CPI signing.
+Stores `vault_bump` on the loan for disbursement CPI signing and reserves `member_account.pending_loan`.
 
 ---
 
@@ -73,9 +73,11 @@ Stores `vault_bump` on the loan for disbursement CPI signing.
 Guarantor approves a pending loan. When both guarantors have signed:
 
 1. Vault liquidity checked (`vault.amount >= principal`)
-2. Loan → `Active`; principal disbursed to borrower ATA
-3. Both guarantors move from `pending_guarantees` → `active_guarantees`
-4. `pool.total_outstanding_loans += principal`
+2. Borrower and guarantor eligibility rechecked
+3. Loan → `Active`; principal disbursed to borrower ATA
+4. Both guarantors move from `pending_guarantees` → `active_guarantees`
+5. Borrower `pending_loan` moves to `active_loan`
+6. `pool.total_outstanding_loans += principal`
 
 Partial co-sign only sets `guarantor_*_signed` and adds `pending_guarantees`.
 
@@ -97,7 +99,7 @@ Partial co-sign only sets `guarantor_*_signed` and adds `pending_guarantees`.
 Borrower repays partially or fully to vault.
 
 - Decrements `loan.outstanding` and `pool.total_outstanding_loans`
-- On full repayment: loan → `Repaid`, clears borrower `active_loan` and guarantor `active_guarantees`
+- On full repayment: loan → `Repaid`, clears matching borrower `active_loan` and guarantor `active_guarantees`
 
 **Args:** `amount: u64`
 
@@ -105,12 +107,13 @@ Borrower repays partially or fully to vault.
 
 ## `cancel_loan`
 
-Borrower cancels a **Pending** loan anytime. Closes loan account (rent to borrower); clears guarantor `pending_guarantees`.
+Borrower cancels a **Pending** loan anytime. Closes loan account (rent to borrower); clears borrower `pending_loan` and guarantor `pending_guarantees`.
 
 | Account | Mut | Signer |
 |---------|-----|--------|
 | borrower | ✓ | ✓ |
 | loan | ✓ | closed to borrower |
+| borrower_member | ✓ | |
 | guarantor_a_member, guarantor_b_member | ✓ | |
 
 ---
@@ -135,7 +138,7 @@ Guarantor revokes a partial co-sign while loan is **Pending**. Clears their `pen
 - Deducts shares from each guarantor's `savings_balance`
 - CPI transfer from each guarantor ATA to vault
 - Decrements `pool.total_savings` and `pool.total_outstanding_loans` by outstanding
-- Clears borrower `active_loan` and guarantor `active_guarantees`
+- Clears matching borrower `active_loan` and guarantor `active_guarantees`
 
 | Account | Mut | Signer |
 |---------|-----|--------|
@@ -157,7 +160,7 @@ Large account struct uses `Box<>` in the Anchor context to stay under BPF stack 
 
 Withdraws `savings_balance` from vault and closes member account.
 
-**Blocked when:** `active_loan` set, non-empty `active_guarantees`, non-empty `pending_guarantees`, or `vault.amount < savings_balance` (`InsufficientVaultLiquidity`).
+**Blocked when:** `active_loan` set, `pending_loan` set, non-empty `active_guarantees`, non-empty `pending_guarantees`, or `vault.amount < savings_balance` (`InsufficientVaultLiquidity`).
 
 | Account | Mut | Signer |
 |---------|-----|--------|

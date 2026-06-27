@@ -22,6 +22,16 @@ pub struct CancelLoan<'info> {
     )]
     pub loan: Account<'info, Loan>,
 
+    /// Borrower's member account (pending loan reservation cleared).
+    #[account(
+        mut,
+        seeds = [MEMBER_SEED, loan.pool.as_ref(), borrower.key().as_ref()],
+        bump = borrower_member.bump,
+        constraint = borrower_member.owner == borrower.key(),
+        constraint = borrower_member.pool == loan.pool,
+    )]
+    pub borrower_member: Box<Account<'info, Member>>,
+
     /// Guarantor A member account (pending guarantee cleared).
     #[account(
         mut,
