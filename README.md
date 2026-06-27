@@ -21,8 +21,9 @@ The protocol enforces financial mechanics on-chain while allowing membership pol
 | Property | Value |
 |----------|-------|
 | Blockchain | Solana (devnet deployed) |
-| Language | Rust 1.89 |
-| Framework | Anchor 1.0.2 |
+| Language | Rust stable for host builds |
+| Framework | Anchor crates 1.1.2 |
+| Solana crates | `solana-client` 4.1.0 · `solana-program-test` 4.1.0 · `solana-sdk` 4.0.1 |
 | Loan model | Two guarantors, 3× savings cap |
 | Savings model | Shared SPL vault + ledger |
 | Client | `kzp` CLI |
@@ -80,7 +81,7 @@ Deeper domain and mapping: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 ### Administration
 
 - Pool initialization and SPL mint binding
-- Default settlement with guarantor SPL recovery
+- Default settlement from reserved guarantor savings liability
 
 ---
 
@@ -126,7 +127,7 @@ bash scripts/devnet-demo.sh   # full scripted lifecycle
 
 ### Install
 
-Rust 1.89, Solana CLI 3.x, Anchor 1.0.2, cargo-nextest. Full toolchain notes: [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md).
+Rust stable, Solana CLI 4.x, Anchor CLI 1.0.2, Anchor crates 1.1.2, Solana crates 4.x, cargo-nextest. Full toolchain notes: [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md).
 
 ### Build
 
@@ -283,7 +284,7 @@ keys/               Local keypairs (gitignored)
 | Layer | Coverage |
 |-------|----------|
 | Unit tests | `programs/kzp-mini/src/operations/` |
-| Integration | 46 `solana-program-test` scenarios |
+| Integration | 62 `solana-program-test` scenarios |
 | Specs | BDD criteria in [docs/USE_CASES.md](docs/USE_CASES.md) |
 
 ```bash
@@ -324,7 +325,7 @@ Index: [docs/README.md](docs/README.md).
 | Ledger vs vault | Both tracked; fail-closed exit/disburse | Safer; monitor for drift |
 | Pending loans | Only borrower can cancel | Abandoned PDAs pay rent until cancelled |
 | Upgrades | No migration instruction | Schema changes need fresh pool deploy |
-| Toolchain | Rust 1.89, Anchor 1.0.2, Solana 3.x | Solana 4.x unsupported |
+| Toolchain | Stable host Rust, Anchor crates 1.1.2, Solana crates 4.x | SBF builds still use Solana's bundled compiler; do not set a workspace `rust-version` above that compiler's support |
 
 ---
 

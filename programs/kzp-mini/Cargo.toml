@@ -3,7 +3,6 @@ name = "kzp-mini"
 version = "0.1.0"
 description = "Minimal on-chain workplace mutual-aid savings pool with co-signed loans"
 edition.workspace = true
-rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 readme = "../../README.md"

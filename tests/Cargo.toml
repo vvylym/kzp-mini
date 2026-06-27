@@ -3,7 +3,6 @@ name = "kzp-tests"
 version = "0.1.0"
 description = "KZP minimal integration tests"
 edition.workspace = true
-rust-version.workspace = true
 
 [dev-dependencies]
 kzp-mini.workspace = true

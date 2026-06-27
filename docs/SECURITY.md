@@ -68,7 +68,7 @@ By-design tradeoffs or operational constraints. Changing them requires a product
 
 | Topic | What happens | Why it stays |
 |-------|--------------|--------------|
-| **Admin default discretion** | Admin can call `settle_default` on any active loan with no on-chain proof of default. Guarantors must co-sign the transaction for SPL transfers. | Single admin for this release; policy is off-chain. |
+| **Admin default discretion** | Admin can call `settle_default` on any due active loan with no on-chain proof of default. Settlement uses already-reserved guarantor savings liability; no fresh guarantor signatures are required. | Single admin for this release; policy is off-chain. |
 | **Stalled pending loans** | If a guarantor `withdraw_cosign`s or never signs, loan stays `Pending` until borrower `cancel_loan`s. Guarantors cannot exit while pending. | Workflow friction only; no fund theft. |
 | **Abandoned pending loans** | If borrower never cancels, loan PDA remains open and accrues rent. Only borrower can close it. | Solana account model; no third-party close without new instruction. |
 | **Member layout change** | Redeploy with resized `Member` breaks existing member PDAs. | Fresh pool deploy required on upgrade. |

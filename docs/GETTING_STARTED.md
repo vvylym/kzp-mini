@@ -6,15 +6,25 @@ Install tools, build the program, deploy, and fund a devnet wallet. For a minima
 
 | Tool | Version / notes |
 |------|-----------------|
-| [Rust](https://rustup.rs/) | 1.89 (`rust-toolchain.toml`) - `rustfmt`, `clippy` |
-| [Solana CLI](https://docs.anza.xyz/cli/install) | 3.x (Solana 4.x not supported) |
-| [Anchor](https://www.anchor-lang.com/docs/installation) | 1.0.2 (`avm install 1.0.2`) |
+| [Rust](https://rustup.rs/) | Stable channel from `rust-toolchain.toml` with `rustfmt`, `clippy`, and `llvm-tools-preview` |
+| [Solana CLI](https://docs.anza.xyz/cli/install) | 4.x / Agave; workspace crates use `solana-client` 4.1.0, `solana-program-test` 4.1.0, and `solana-sdk` 4.0.1 |
+| [Anchor CLI](https://www.anchor-lang.com/docs/installation) | 1.0.2 via `Anchor.toml`; program crates use `anchor-lang` / `anchor-spl` 1.1.2 |
 | [pnpm](https://pnpm.io/) | Anchor workspace metadata |
 | [cargo-nextest](https://nexte.st/) | `cargo install cargo-nextest --locked` |
 
 ```bash
 rustup component add rustfmt clippy
 cargo install cargo-nextest --locked
+```
+
+### SBF compiler note
+
+Host builds use the stable Rust channel, but `anchor build` delegates to Solana's SBF toolchain, which ships its own Rust compiler. Because Cargo validates `package.rust-version` with that bundled compiler, this workspace intentionally does not set a workspace `rust-version` higher than the SBF compiler supports. If integration tests panic with `Program file data not available for kzp_mini`, rebuild the SBF artifact first:
+
+```bash
+mkdir -p target/deploy
+cp keys/program.json target/deploy/kzp_mini-keypair.json
+NO_DNA=1 anchor build --ignore-keys
 ```
 
 ## Clone and build

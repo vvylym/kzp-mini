@@ -2,6 +2,8 @@
 
 Rust integration tests for `kzp-mini` using `solana-program-test`.
 
+The suite targets the Solana 4.x crate line from the workspace (`solana-program-test` 4.1.0). It loads the SBF program from `target/deploy/kzp_mini.so`, so run `NO_DNA=1 anchor build --ignore-keys` before the tests if that artifact is missing or stale.
+
 ## Layout
 
 Each `test_*.rs` file defines a documented `Universe` struct and `universe()` (or variant) that builds the shared fixture for that instruction. Every test uses regular `//` comments immediately above `with_universe!`:
@@ -57,12 +59,13 @@ with_universe!(request_loan_fails_when_guarantor_limit_reached, universe_guarant
 ```bash
 NO_DNA=1 anchor build --ignore-keys
 cargo llvm-cov nextest --workspace --all-targets --all-features
+# or: cargo test --workspace
 # or: anchor test   # runs `cargo nextest --workspace` per Anchor.toml
 ```
 
 BPF artifact path: `target/deploy/kzp_mini.so` (set via `BPF_OUT_DIR` in `TestApp`).
 
-Shared dependency versions live in the root [`Cargo.toml`](../Cargo.toml) `[workspace.dependencies]` (`anchor-lang`, `anchor-spl`, `solana-sdk`, …).
+Shared dependency versions live in the root [`Cargo.toml`](../Cargo.toml) `[workspace.dependencies]` (`anchor-lang`, `anchor-spl`, `solana-sdk`, `solana-program-test`, ...).
 
 ## Error assertions
 
