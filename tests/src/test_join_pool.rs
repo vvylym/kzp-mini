@@ -41,6 +41,7 @@ with_universe!(join_pool_nominal_entry_fee_only, |app, u| {
     assert_eq!(member.owner, bob.pubkey());
     assert_eq!(member.entry_fee_paid, ENTRY_FEE);
     assert_eq!(member.savings_balance, 0);
+    assert_eq!(member.locked_savings, 0);
     assert!(member.active_loan.is_none());
     assert!(member.pending_loan.is_none());
     assert!(member.active_guarantees.is_empty());

@@ -25,6 +25,35 @@ pub fn push_pending_guarantee(member: &mut Member, loan_key: Pubkey) -> Result<(
     Ok(())
 }
 
+/// Returns savings not currently reserved for active guarantees.
+pub fn unlocked_savings(member: &Member) -> Result<u64, PoolError> {
+    member
+        .savings_balance
+        .checked_sub(member.locked_savings)
+        .ok_or(PoolError::GuarantorInsufficientSavings)
+}
+
+/// Reserves guarantor savings for an active loan liability.
+pub fn reserve_savings(member: &mut Member, amount: u64) -> Result<(), PoolError> {
+    if unlocked_savings(member)? < amount {
+        return Err(PoolError::GuarantorInsufficientSavings);
+    }
+    member.locked_savings = member
+        .locked_savings
+        .checked_add(amount)
+        .ok_or(PoolError::GuarantorInsufficientSavings)?;
+    Ok(())
+}
+
+/// Releases a previously reserved guarantor savings amount.
+pub fn release_savings(member: &mut Member, amount: u64) -> Result<(), PoolError> {
+    member.locked_savings = member
+        .locked_savings
+        .checked_sub(amount)
+        .ok_or(PoolError::GuarantorInsufficientSavings)?;
+    Ok(())
+}
+
 /// Records an active guarantee on a disbursed loan, enforcing the per-member cap.
 ///
 /// # Arguments
@@ -61,6 +90,7 @@ mod tests {
             owner: Pubkey::new_unique(),
             entry_fee_paid: 0,
             savings_balance: 0,
+            locked_savings: 0,
             active_loan: None,
             pending_loan: None,
             active_guarantees: Vec::new(),
@@ -109,5 +139,23 @@ mod tests {
         clear_guarantee_refs(&mut member, &loan);
         assert!(member.pending_guarantees.is_empty());
         assert!(member.active_guarantees.is_empty());
+    }
+
+    #[test]
+    fn savings_reservation_uses_unlocked_balance() {
+        let mut member = empty_member();
+        member.savings_balance = 1_000;
+
+        reserve_savings(&mut member, 600).unwrap();
+        assert_eq!(member.locked_savings, 600);
+        assert_eq!(unlocked_savings(&member).unwrap(), 400);
+
+        assert_eq!(
+            reserve_savings(&mut member, 401).unwrap_err(),
+            PoolError::GuarantorInsufficientSavings
+        );
+
+        release_savings(&mut member, 600).unwrap();
+        assert_eq!(member.locked_savings, 0);
     }
 }

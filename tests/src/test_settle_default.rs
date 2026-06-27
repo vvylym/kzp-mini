@@ -1,7 +1,8 @@
 use crate::helpers::{funded_admin, member_with_savings, TestApp};
 use kzp_mini::state::LoanStatus;
+use kzp_mini::utils::pda::member_pda;
 use kzp_mini::PoolError;
-use solana_sdk::pubkey::Pubkey;
+use solana_sdk::{pubkey::Pubkey, signature::Signer};
 
 /// Shared fixtures for [`settle_default`](kzp_mini::settle_default) integration tests.
 struct Universe {
@@ -75,8 +76,14 @@ with_universe!(settle_default_nominal, |app, u| {
     assert_eq!(loan.outstanding, 0);
 
     let pool_after = app.fetch_pool(&u.pool).await;
+    let (ga_member, _) = member_pda(&u.pool, &u.guarantor_a.pubkey());
+    let (gb_member, _) = member_pda(&u.pool, &u.guarantor_b.pubkey());
+    let ga_member = app.fetch_member(&ga_member).await;
+    let gb_member = app.fetch_member(&gb_member).await;
     assert_eq!(pool_after.total_outstanding_loans, 0);
     assert_eq!(pool_after.total_savings, 6_000_000_000 - amount);
+    assert_eq!(ga_member.locked_savings, 0);
+    assert_eq!(gb_member.locked_savings, 0);
     assert_eq!(app.token_balance(&vault).await, vault_before + amount);
 });
 

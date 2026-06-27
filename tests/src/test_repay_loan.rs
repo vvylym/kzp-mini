@@ -121,6 +121,8 @@ with_universe!(
         assert!(bob_member.active_loan.is_none());
         assert!(!carol_member.active_guarantees.contains(&u.loan));
         assert!(!dave_member.active_guarantees.contains(&u.loan));
+        assert_eq!(carol_member.locked_savings, 0);
+        assert_eq!(dave_member.locked_savings, 0);
     }
 );
 

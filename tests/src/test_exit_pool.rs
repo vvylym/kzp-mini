@@ -114,6 +114,10 @@ with_universe!(exit_pool_fails_with_active_guarantees, |app, u| {
     app.activate_loan(&bob, u.pool, 1, 1_000_000_000, &carol, &dave, bob_ata)
         .await;
 
+    let (carol_member, _) = member_pda(&u.pool, &carol.pubkey());
+    let carol_state = app.fetch_member(&carol_member).await;
+    assert_eq!(carol_state.locked_savings, 500_000_000);
+
     let ix = app.exit_pool(&carol, u.pool, carol_ata);
     app.process_expect_custom_err(&[ix], &[&carol], PoolError::ActiveGuaranteesExist)
         .await;

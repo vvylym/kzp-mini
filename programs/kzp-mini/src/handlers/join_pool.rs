@@ -32,6 +32,7 @@ pub fn handle(ctx: Context<JoinPool>, entry_fee: u64) -> Result<()> {
     member.owner = ctx.accounts.member.key();
     member.entry_fee_paid = entry_fee;
     member.savings_balance = 0;
+    member.locked_savings = 0;
     member.active_loan = None;
     member.pending_loan = None;
     member.active_guarantees = Vec::new();

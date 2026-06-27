@@ -122,6 +122,8 @@ with_universe!(
         assert!(dave_after.pending_guarantees.is_empty());
         assert!(carol_after.active_guarantees.contains(&loan_key));
         assert!(dave_after.active_guarantees.contains(&loan_key));
+        assert_eq!(carol_after.locked_savings, amount / 2);
+        assert_eq!(dave_after.locked_savings, amount / 2);
     }
 );
 
@@ -191,6 +193,61 @@ with_universe!(
             PoolError::GuarantorHasActiveLoan,
         )
         .await;
+    }
+);
+
+// Spec: edge - guarantor must have enough unlocked savings for their reserved share.
+//
+// Given:
+// - Guarantor A has less unlocked savings than their 50/50 share
+// - Guarantor B already co-signed
+//
+// When:
+// - Guarantor A tries to provide the second co-sign
+//
+// Then:
+// - Activation fails with `GuarantorInsufficientSavings`
+with_universe!(
+    co_sign_loan_fails_when_guarantor_lacks_unlocked_savings_for_share,
+    |app, u| {
+        let (low_savings_guarantor, _) = member_with_savings(app, u.pool, 100_000_000).await;
+        let loan_nonce = 12;
+        let ix = app.request_loan(
+            &u.borrower,
+            u.pool,
+            loan_nonce,
+            1_000_000_000,
+            low_savings_guarantor.pubkey(),
+            u.guarantor_b.pubkey(),
+        );
+        app.process(&[ix], &[&u.borrower]).await;
+        let loan_key = loan_pda(&u.pool, &u.borrower.pubkey(), loan_nonce).0;
+
+        let ix_b = app
+            .co_sign_loan(&u.guarantor_b, loan_key, u.borrower_ata)
+            .await;
+        app.process(&[ix_b], &[&u.guarantor_b]).await;
+
+        let borrower_balance_before = app.token_balance(&u.borrower_ata).await;
+        let ix_a = app
+            .co_sign_loan(&low_savings_guarantor, loan_key, u.borrower_ata)
+            .await;
+        app.process_expect_custom_err(
+            &[ix_a],
+            &[&low_savings_guarantor],
+            PoolError::GuarantorInsufficientSavings,
+        )
+        .await;
+
+        let loan = app.fetch_loan(&loan_key).await;
+        let (low_member, _) = member_pda(&u.pool, &low_savings_guarantor.pubkey());
+        let low_member = app.fetch_member(&low_member).await;
+        assert_eq!(loan.status, LoanStatus::Pending);
+        assert_eq!(low_member.locked_savings, 0);
+        assert_eq!(
+            app.token_balance(&u.borrower_ata).await,
+            borrower_balance_before
+        );
     }
 );
 

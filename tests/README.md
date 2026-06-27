@@ -20,8 +20,8 @@ Specification and use cases: [../docs/USE_CASES.md](../docs/USE_CASES.md).
 | `test_join_pool.rs` | Entry fee, duplicate member, invalid vault |
 | `test_deposit_savings.rs` | Savings deposits, zero amount |
 | `test_request_loan.rs` | Loan limits, borrower reservation, guarantor rules, nonce reuse |
-| `test_cosign_loan.rs` | Partial/full disbursement, activation rechecks, co-sign errors |
-| `test_repay_loan.rs` | Partial/full repay, borrower checks |
+| `test_cosign_loan.rs` | Partial/full disbursement, liability reservation, activation rechecks, co-sign errors |
+| `test_repay_loan.rs` | Partial/full repay, borrower checks, liability release |
 | `test_cancel_loan.rs` | Borrower cancels pending loan and clears reservations |
 | `test_withdraw_cosign.rs` | Guarantor revokes partial co-sign |
 | `test_settle_default.rs` | Admin default settlement, 50/50 guarantor split |

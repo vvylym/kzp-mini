@@ -4,7 +4,9 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Transfer};
 
 use crate::instructions::SettleDefault;
-use crate::operations::validate_guarantor_default_coverage;
+use crate::operations::{
+    release_savings, split_outstanding_50_50, validate_guarantor_default_coverage,
+};
 use crate::state::LoanStatus;
 
 /// Admin marks an active loan defaulted; guarantors cover 50/50 via savings ledger and SPL transfer to vault.
@@ -63,6 +65,9 @@ pub fn handle(ctx: Context<SettleDefault>) -> Result<()> {
         .savings_balance
         .checked_sub(share_b)
         .ok_or(ProgramError::ArithmeticOverflow)?;
+    let (locked_share_a, locked_share_b) = split_outstanding_50_50(loan.principal);
+    release_savings(guarantor_a, locked_share_a)?;
+    release_savings(guarantor_b, locked_share_b)?;
 
     let pool = &mut ctx.accounts.pool;
     pool.total_savings = pool

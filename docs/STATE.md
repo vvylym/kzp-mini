@@ -25,6 +25,7 @@ See [Architecture](../README.md#architecture) for how ledger fields relate to th
 | owner | Pubkey | Member wallet |
 | entry_fee_paid | u64 | Fee recorded at join |
 | savings_balance | u64 | Ledger balance (withdrawn on `exit_pool`) |
+| locked_savings | u64 | Savings reserved for active guarantor liability |
 | active_loan | Option\<Pubkey\> | Disbursed loan as borrower |
 | pending_loan | Option\<Pubkey\> | Pending loan request as borrower |
 | active_guarantees | Vec\<Pubkey\> | Disbursed loans guaranteed (max 5) |

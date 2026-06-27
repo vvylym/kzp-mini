@@ -13,6 +13,7 @@ pub fn handle(ctx: Context<ExitPool>) -> Result<()> {
     validate_exit_eligible(
         member.active_loan,
         member.pending_loan,
+        member.locked_savings,
         &member.active_guarantees,
         &member.pending_guarantees,
     )?;

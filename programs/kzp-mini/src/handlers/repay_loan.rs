@@ -4,7 +4,10 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Transfer};
 
 use crate::instructions::RepayLoan;
-use crate::operations::{apply_repayment, validate_borrower, validate_repayment};
+use crate::operations::{
+    apply_repayment, release_savings, split_outstanding_50_50, validate_borrower,
+    validate_repayment,
+};
 use crate::state::LoanStatus;
 
 /// Transfers repayment to vault and updates loan, pool, and guarantee state.
@@ -41,6 +44,9 @@ pub fn handle(ctx: Context<RepayLoan>, amount: u64) -> Result<()> {
         if ctx.accounts.borrower_member.active_loan == Some(loan_key) {
             ctx.accounts.borrower_member.active_loan = None;
         }
+        let (share_a, share_b) = split_outstanding_50_50(loan.principal);
+        release_savings(&mut ctx.accounts.guarantor_a_member, share_a)?;
+        release_savings(&mut ctx.accounts.guarantor_b_member, share_b)?;
         ctx.accounts
             .guarantor_a_member
             .active_guarantees

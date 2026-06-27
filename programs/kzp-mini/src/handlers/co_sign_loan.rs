@@ -6,8 +6,8 @@ use anchor_spl::token::{self, Transfer};
 use crate::error::PoolError;
 use crate::instructions::CoSignLoan;
 use crate::operations::{
-    guarantor_slot, push_active_guarantee, push_pending_guarantee, validate_vault_liquidity,
-    GuarantorSlot,
+    guarantor_slot, push_active_guarantee, push_pending_guarantee, reserve_savings,
+    split_outstanding_50_50, validate_vault_liquidity, GuarantorSlot,
 };
 use crate::state::LoanStatus;
 use crate::utils::seeds::VAULT_SEED;
@@ -52,6 +52,9 @@ pub fn handle(ctx: Context<CoSignLoan>) -> Result<()> {
                 && ctx.accounts.guarantor_b_member.active_loan.is_none(),
             PoolError::GuarantorHasActiveLoan
         );
+        let (share_a, share_b) = split_outstanding_50_50(loan.principal);
+        reserve_savings(&mut ctx.accounts.guarantor_a_member, share_a)?;
+        reserve_savings(&mut ctx.accounts.guarantor_b_member, share_b)?;
 
         loan.status = LoanStatus::Active;
 

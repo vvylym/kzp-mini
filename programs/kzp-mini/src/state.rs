@@ -43,6 +43,8 @@ pub struct Member {
     pub entry_fee_paid: u64,
     /// Ledger balance of savings the member may withdraw on `exit_pool`.
     pub savings_balance: u64,
+    /// Savings reserved to cover active guarantor liability.
+    pub locked_savings: u64,
     /// Loan PDA pubkey while the member is borrower on a disbursed loan, else `None`.
     pub active_loan: Option<Pubkey>,
     /// Loan PDA pubkey while the member has a pending loan request, else `None`.
@@ -64,6 +66,7 @@ impl Member {
         + 32
         + 8
         + 32
+        + 8
         + 8
         + 8
         + (1 + 32)

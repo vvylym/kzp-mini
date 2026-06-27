@@ -74,10 +74,11 @@ Guarantor approves a pending loan. When both guarantors have signed:
 
 1. Vault liquidity checked (`vault.amount >= principal`)
 2. Borrower and guarantor eligibility rechecked
-3. Loan → `Active`; principal disbursed to borrower ATA
-4. Both guarantors move from `pending_guarantees` → `active_guarantees`
-5. Borrower `pending_loan` moves to `active_loan`
-6. `pool.total_outstanding_loans += principal`
+3. Guarantor 50/50 liability is reserved in `locked_savings`
+4. Loan → `Active`; principal disbursed to borrower ATA
+5. Both guarantors move from `pending_guarantees` → `active_guarantees`
+6. Borrower `pending_loan` moves to `active_loan`
+7. `pool.total_outstanding_loans += principal`
 
 Partial co-sign only sets `guarantor_*_signed` and adds `pending_guarantees`.
 
@@ -99,7 +100,7 @@ Partial co-sign only sets `guarantor_*_signed` and adds `pending_guarantees`.
 Borrower repays partially or fully to vault.
 
 - Decrements `loan.outstanding` and `pool.total_outstanding_loans`
-- On full repayment: loan → `Repaid`, clears matching borrower `active_loan` and guarantor `active_guarantees`
+- On full repayment: loan → `Repaid`, clears matching borrower `active_loan`, releases guarantor `locked_savings`, and clears guarantor `active_guarantees`
 
 **Args:** `amount: u64`
 
@@ -138,7 +139,7 @@ Guarantor revokes a partial co-sign while loan is **Pending**. Clears their `pen
 - Deducts shares from each guarantor's `savings_balance`
 - CPI transfer from each guarantor ATA to vault
 - Decrements `pool.total_savings` and `pool.total_outstanding_loans` by outstanding
-- Clears matching borrower `active_loan` and guarantor `active_guarantees`
+- Clears matching borrower `active_loan`, releases guarantor `locked_savings`, and clears guarantor `active_guarantees`
 
 | Account | Mut | Signer |
 |---------|-----|--------|
@@ -160,7 +161,7 @@ Large account struct uses `Box<>` in the Anchor context to stay under BPF stack 
 
 Withdraws `savings_balance` from vault and closes member account.
 
-**Blocked when:** `active_loan` set, `pending_loan` set, non-empty `active_guarantees`, non-empty `pending_guarantees`, or `vault.amount < savings_balance` (`InsufficientVaultLiquidity`).
+**Blocked when:** `active_loan` set, `pending_loan` set, `locked_savings > 0`, non-empty `active_guarantees`, non-empty `pending_guarantees`, or `vault.amount < savings_balance` (`InsufficientVaultLiquidity`).
 
 | Account | Mut | Signer |
 |---------|-----|--------|
