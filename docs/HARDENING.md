@@ -24,8 +24,8 @@ Status values:
 | H-009 | UC-4 | Insufficient vault liquidity on the second co-sign leaves loan and member state pending. | `tests/src/test_cosign_loan.rs` | planned | planned | pending |
 | H-010 | UC-5 | Non-borrowers cannot cancel a pending loan. | `tests/src/test_cancel_loan.rs` | pass: `cargo test -p kzp-tests cancel_loan` | green | `fix(loans): reserve pending borrower capacity` |
 | H-011 | UC-5 | Borrower can cancel an unsigned pending loan. | `tests/src/test_cancel_loan.rs` | pass: `cargo test -p kzp-tests cancel_loan` | green | `fix(loans): reserve pending borrower capacity` |
-| H-012 | UC-6 | Co-sign withdrawal is rejected once the loan is active. | `tests/src/test_withdraw_cosign.rs` | planned | planned | pending |
-| H-013 | UC-6 | Non-nominated members cannot withdraw a co-sign. | `tests/src/test_withdraw_cosign.rs` | planned | planned | pending |
+| H-012 | UC-6 | Co-sign withdrawal is rejected once the loan is active. | `tests/src/test_withdraw_cosign.rs` | pass: `cargo test -p kzp-tests withdraw_cosign` | green | `test(withdraw): cover invalid co-sign withdrawal` |
+| H-013 | UC-6 | Non-nominated members cannot withdraw a co-sign. | `tests/src/test_withdraw_cosign.rs` | pass: `cargo test -p kzp-tests withdraw_cosign` | green | `test(withdraw): cover invalid co-sign withdrawal` |
 | H-014 | UC-8 | Default settlement is rejected before the loan due date. | `tests/src/test_settle_default.rs` | pass: `cargo test -p kzp-tests settle_default` | green | `fix(defaults): enforce due-date settlement` |
 | H-015 | UC-8 | Default settlement after due date uses reserved liability without guarantor signatures. | `tests/src/test_settle_default.rs` | pass: `cargo test -p kzp-tests settle_default` | green | `fix(defaults): enforce due-date settlement` |
 | H-016 | UC-8 | Odd outstanding amounts split deterministically and reconcile exactly. | `tests/src/test_settle_default.rs` | planned | planned | pending |

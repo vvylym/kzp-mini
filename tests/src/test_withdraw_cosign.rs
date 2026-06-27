@@ -93,3 +93,61 @@ with_universe!(withdraw_cosign_fails_when_not_signed, |app, u| {
     app.process_expect_custom_err(&[ix], &[&u.guarantor_a], PoolError::NotCoSigned)
         .await;
 });
+
+// Spec: edge - cannot withdraw co-sign once loan is active (`LoanNotPending`).
+//
+// Given:
+// - A loan that both guarantors co-signed and activated
+//
+// When:
+// - Guarantor A calls `withdraw_cosign`
+//
+// Then:
+// - Transaction fails with `LoanNotPending`
+with_universe!(withdraw_cosign_fails_when_loan_active, |app, u| {
+    let loan_key = app
+        .activate_loan(
+            &u.borrower,
+            u.pool,
+            23,
+            1_000_000_000,
+            &u.guarantor_a,
+            &u.guarantor_b,
+            u.borrower_ata,
+        )
+        .await;
+
+    let ix = app.withdraw_cosign(&u.guarantor_a, loan_key).await;
+    app.process_expect_custom_err(&[ix], &[&u.guarantor_a], PoolError::LoanNotPending)
+        .await;
+});
+
+// Spec: edge - non-nominated member cannot withdraw a co-sign (`NotNominatedGuarantor`).
+//
+// Given:
+// - A pending loan with guarantors A and B
+// - Eve is a pool member but not nominated on the loan
+//
+// When:
+// - Eve calls `withdraw_cosign`
+//
+// Then:
+// - Transaction fails with `NotNominatedGuarantor`
+with_universe!(withdraw_cosign_fails_when_not_nominated, |app, u| {
+    let (eve, _) = member_with_savings(app, u.pool, 2_000_000_000).await;
+    let loan_nonce = 24;
+    let ix_req = app.request_loan(
+        &u.borrower,
+        u.pool,
+        loan_nonce,
+        1_000_000_000,
+        u.guarantor_a.pubkey(),
+        u.guarantor_b.pubkey(),
+    );
+    app.process(&[ix_req], &[&u.borrower]).await;
+    let (loan_key, _) = loan_pda(&u.pool, &u.borrower.pubkey(), loan_nonce);
+
+    let ix = app.withdraw_cosign(&eve, loan_key).await;
+    app.process_expect_custom_err(&[ix], &[&eve], PoolError::NotNominatedGuarantor)
+        .await;
+});
