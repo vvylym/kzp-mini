@@ -1,6 +1,6 @@
 # Use Cases and Acceptance Criteria
 
-BDD-style scenarios. **55 integration tests** in `tests/src/test_*.rs` mirror these specs (see [tests/README.md](../tests/README.md)).
+BDD-style scenarios. **66 integration tests** in `tests/src/test_*.rs` mirror these specs (see [tests/README.md](../tests/README.md)).
 
 ---
 
@@ -230,7 +230,7 @@ BDD-style scenarios. **55 integration tests** in `tests/src/test_*.rs` mirror th
 - **When** any signer calls `settle_default` after the due date
 - **Then** loan account closes, savings ledger reduces 50/50, outstanding zeroes, counters update
 
-### Edge - non-admin crank
+### Nominal - non-admin crank
 
 - **Then** settlement succeeds after due date because the due-date check is the trust boundary
 

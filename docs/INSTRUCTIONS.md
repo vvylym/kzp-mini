@@ -108,7 +108,7 @@ Borrower repays partially or fully to vault.
 - Decrements `loan.outstanding` and `pool.total_outstanding_loans`
 - On full repayment: closes the loan account to the borrower, clears matching borrower `active_loan`, releases loan-local guarantor backing from `locked_savings`, and decrements `active_guarantee_count`
 
-Full repayment must append remaining accounts: `borrower_member`, `guarantor_a_member`, `guarantor_b_member`.
+Partial repayment only needs the base accounts needed for the token transfer and outstanding-counter update. Full repayment must append remaining accounts in this exact order: `borrower_member`, `guarantor_a_member`, `guarantor_b_member`.
 
 **Args:** `amount: u64`
 

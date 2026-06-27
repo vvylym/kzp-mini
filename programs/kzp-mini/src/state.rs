@@ -5,7 +5,7 @@ use anchor_lang::prelude::*;
 /// Global pool configuration and aggregate counters.
 #[account]
 pub struct Pool {
-    /// Wallet authorized to administer the pool (e.g. call `settle_default`).
+    /// Wallet that created the pool; default settlement is permissionless after `due_ts`.
     pub admin: Pubkey,
     /// SPL mint for all pool deposits, loans, and vault transfers.
     pub token_mint: Pubkey,
@@ -90,7 +90,7 @@ pub struct Loan {
     pub guarantor_b_locked_savings: u64,
     /// Current lifecycle state of the loan.
     pub status: LoanStatus,
-    /// Unix timestamp when admin default settlement becomes allowed.
+    /// Unix timestamp when permissionless default settlement becomes allowed.
     pub due_ts: i64,
     /// Bump seed for the loan PDA.
     pub bump: u8,
@@ -110,8 +110,8 @@ pub enum LoanStatus {
     Pending,
     /// Disbursed to the borrower; repayments accepted.
     Active,
-    /// Fully repaid; guarantor obligations cleared.
+    /// Fully repaid marker set immediately before terminal account close.
     Repaid,
-    /// Marked defaulted by admin; outstanding zeroed, guarantors charged.
+    /// Due default marker set immediately before terminal account close.
     Defaulted,
 }

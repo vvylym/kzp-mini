@@ -33,7 +33,7 @@ Any excess is expected and represents entry-fee buffer or other vault surplus no
 ## Loan limits
 
 - Maximum principal: **3×** borrower `savings_balance` (`MAX_LOAN_MULTIPLIER`).
-- One **active loan** per borrower.
+- One **unresolved loan** per borrower (`pending_loan` or `active_loan`).
 - Up to **5** concurrent guarantees per guarantor (active + pending combined).
 
 ## Guarantee liability

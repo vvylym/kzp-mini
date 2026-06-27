@@ -20,7 +20,7 @@ KZP Minimal is an on-chain mutual-aid pool: members deposit SPL tokens, borrow a
 | **Access control** | Signer checks on all mutating instructions; borrower/guarantor PDAs derived from seeds + bumps |
 | **Token CPIs** | Vault PDA signs outbound transfers; user signs inbound deposits/repayments; mint/owner constraints on ATAs |
 | **Arithmetic** | `checked_add` / `checked_sub` on savings and pool counters |
-| **Loan limits** | 3× savings cap, one active loan per borrower, five guarantees per guarantor (active + pending) |
+| **Loan limits** | 3× savings cap, one unresolved loan per borrower (pending or active), five guarantees per guarantor (active + pending) |
 | **Co-sign** | Pending obligations counted in `pending_guarantee_count`; active counts/backing set only at disbursement when both sign |
 | **Vault liquidity (disburse)** | `InsufficientVaultLiquidity` at disbursement if `vault.amount < principal` |
 | **Vault liquidity (exit)** | `InsufficientVaultLiquidity` if `vault.amount < member.savings_balance` (fail-closed when ledger exceeds physical vault) |
@@ -82,8 +82,8 @@ By-design tradeoffs or operational constraints. Changing them requires a product
 
 | Priority | Hardening | Closes / reduces | Notes |
 |----------|-----------|------------------|-------|
-| **Medium** | `close_stale_loan` (admin or borrower after timeout) | Abandoned pending loans / rent | Requires `Clock` sysvar + max pending duration |
-| **Low** | On-chain default evidence (repayment deadline, attestation account) | Admin default discretion | Governance scope |
+| **Medium** | `close_stale_loan` (permissionless or borrower after timeout) | Abandoned pending loans / rent | Requires max pending duration policy |
+| **Low** | On-chain default evidence (attestation account or governance signal) | Off-chain default policy | Governance scope |
 | **Low** | Invariant check: `total_savings == Σ member.savings_balance` | Counter drift | Better as off-chain indexer |
 | **N/A** | Member migration instruction | Redeploy pain | Only if preserving accounts across upgrades |
 

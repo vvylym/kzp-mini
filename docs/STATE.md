@@ -43,7 +43,7 @@ See [Architecture](../README.md#architecture) for how ledger fields relate to th
 | guarantor_a, guarantor_b | Pubkey | Nominated guarantors |
 | guarantor_a_signed, guarantor_b_signed | bool | Partial co-sign flags (while Pending) |
 | guarantor_a_locked_savings, guarantor_b_locked_savings | u64 | Loan-local reserved savings backing per guarantor |
-| status | LoanStatus | Lifecycle |
+| status | LoanStatus | Lifecycle marker while the account exists |
 | due_ts | i64 | Unix timestamp when permissionless default settlement is allowed |
 | bump | u8 | Loan PDA bump |
 | vault_bump | u8 | Copied from pool at request (vault CPI signing) |
@@ -54,8 +54,8 @@ See [Architecture](../README.md#architecture) for how ledger fields relate to th
 |-------|---------|
 | Pending | Awaiting both co-signs; no disbursement |
 | Active | Disbursed; outstanding may be > 0 |
-| Repaid | Fully repaid; terminal loan accounts are closed |
-| Defaulted | Permissionlessly settled after due date; terminal loan accounts are closed |
+| Repaid | Fully repaid marker set immediately before terminal account close |
+| Defaulted | Due default marker set immediately before terminal account close |
 
 ## PDA seeds
 

@@ -34,6 +34,8 @@ kzp loan repay --loan <LOAN> --amount 500000
 kzp loan cancel --loan <LOAN>    # Pending only
 ```
 
+Full repayment closes the loan account and returns rent to the borrower. Partial repayment sends only the base repay account set; the CLI appends finalization accounts automatically when the amount equals the fetched outstanding balance.
+
 ## Guarantors
 
 ```bash
@@ -41,7 +43,7 @@ kzp loan cosign --loan <LOAN>
 kzp loan withdraw-cosign --loan <LOAN>    # Pending only, partial co-sign
 ```
 
-Run `cosign` once per guarantor wallet; the second co-sign disburses if the vault has liquidity.
+Run `cosign` once per guarantor wallet. The first co-sign uses the slim partial account set. The second co-sign appends activation accounts automatically, reserves guarantor backing from savings, and disburses if the vault has liquidity.
 
 ## Diagnostics
 
