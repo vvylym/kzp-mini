@@ -3,7 +3,7 @@
 use anchor_lang::prelude::*;
 
 use crate::error::PoolError;
-use crate::operations::{clear_guarantee_refs, guarantor_slot, GuarantorSlot};
+use crate::operations::{clear_pending_guarantee, guarantor_slot, GuarantorSlot};
 use crate::state::{Loan, Member};
 use crate::utils::seeds::MEMBER_SEED;
 
@@ -52,12 +52,12 @@ pub fn handle(ctx: Context<WithdrawCosign>) -> Result<()> {
         GuarantorSlot::A => {
             require!(loan.guarantor_a_signed, PoolError::NotCoSigned);
             loan.guarantor_a_signed = false;
-            clear_guarantee_refs(&mut ctx.accounts.guarantor_a_member, &loan_key);
+            clear_pending_guarantee(&mut ctx.accounts.guarantor_a_member, &loan_key);
         }
         GuarantorSlot::B => {
             require!(loan.guarantor_b_signed, PoolError::NotCoSigned);
             loan.guarantor_b_signed = false;
-            clear_guarantee_refs(&mut ctx.accounts.guarantor_b_member, &loan_key);
+            clear_pending_guarantee(&mut ctx.accounts.guarantor_b_member, &loan_key);
         }
     }
 

@@ -5,7 +5,7 @@ use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 use crate::error::PoolError;
 use crate::operations::{
-    guarantor_slot, push_active_guarantee, push_pending_guarantee, reserve_savings,
+    guarantor_slot, move_pending_to_active, push_pending_guarantee, reserve_savings,
     split_outstanding_50_50, validate_vault_liquidity, GuarantorSlot,
 };
 use crate::state::{Loan, Member, Pool};
@@ -132,10 +132,8 @@ pub fn handle(ctx: Context<CoSignLoan>) -> Result<()> {
 
         let guarantor_a = &mut ctx.accounts.guarantor_a_member;
         let guarantor_b = &mut ctx.accounts.guarantor_b_member;
-        guarantor_a.pending_guarantees.retain(|g| g != &loan_key);
-        guarantor_b.pending_guarantees.retain(|g| g != &loan_key);
-        push_active_guarantee(guarantor_a, loan_key)?;
-        push_active_guarantee(guarantor_b, loan_key)?;
+        move_pending_to_active(guarantor_a, loan_key)?;
+        move_pending_to_active(guarantor_b, loan_key)?;
 
         let pool = &mut ctx.accounts.pool;
         pool.total_outstanding_loans = pool

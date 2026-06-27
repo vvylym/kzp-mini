@@ -3,7 +3,7 @@
 use anchor_lang::prelude::*;
 
 use crate::error::PoolError;
-use crate::operations::clear_guarantee_refs;
+use crate::operations::clear_pending_guarantee;
 use crate::state::{Loan, Member};
 use crate::utils::seeds::MEMBER_SEED;
 
@@ -60,7 +60,7 @@ pub fn handle(ctx: Context<CancelLoan>) -> Result<()> {
     if ctx.accounts.borrower_member.pending_loan == Some(loan_key) {
         ctx.accounts.borrower_member.pending_loan = None;
     }
-    clear_guarantee_refs(&mut ctx.accounts.guarantor_a_member, &loan_key);
-    clear_guarantee_refs(&mut ctx.accounts.guarantor_b_member, &loan_key);
+    clear_pending_guarantee(&mut ctx.accounts.guarantor_a_member, &loan_key);
+    clear_pending_guarantee(&mut ctx.accounts.guarantor_b_member, &loan_key);
     Ok(())
 }

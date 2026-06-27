@@ -9,59 +9,62 @@ use crate::error::PoolError;
 use crate::operations::pool_ops::max_loan_for_savings;
 use crate::state::Member;
 
+/// Named inputs for loan-request validation.
+#[derive(Debug, Clone, Copy)]
+pub struct LoanRequestChecks {
+    /// Requested principal (must be > 0 and ≤ multiplier × borrower savings).
+    pub amount: u64,
+    /// Borrower wallet pubkey.
+    pub borrower: Pubkey,
+    /// Borrower ledger balance used for the max-loan calculation.
+    pub borrower_savings: u64,
+    /// Whether `member.active_loan` is already set.
+    pub borrower_has_active_loan: bool,
+    /// Whether `member.pending_loan` is already set.
+    pub borrower_has_pending_loan: bool,
+    /// First nominated guarantor wallet.
+    pub guarantor_a: Pubkey,
+    /// Second nominated guarantor wallet.
+    pub guarantor_b: Pubkey,
+    /// Whether guarantor A is currently borrowing.
+    pub guarantor_a_has_active_loan: bool,
+    /// Whether guarantor B is currently borrowing.
+    pub guarantor_b_has_active_loan: bool,
+    /// Active + pending guarantee count for guarantor A.
+    pub guarantor_a_guarantee_count: usize,
+    /// Active + pending guarantee count for guarantor B.
+    pub guarantor_b_guarantee_count: usize,
+}
+
 /// Validates all business rules for creating a new loan request.
-///
-/// # Arguments
-///
-/// * `amount` - Requested principal (must be > 0 and ≤ `multiplier` × `borrower_savings`).
-/// * `borrower` - Borrower wallet pubkey (checked against self-guarantee rules).
-/// * `borrower_savings` - Borrower ledger balance used for the max-loan calculation.
-/// * `borrower_has_active_loan` - Whether `member.active_loan` is already set.
-/// * `borrower_has_pending_loan` - Whether `member.pending_loan` is already set.
-/// * `guarantor_a`, `guarantor_b` - Nominated guarantor pubkeys (must differ from borrower and each other).
-/// * `guarantor_a_has_active_loan`, `guarantor_b_has_active_loan` - Whether each guarantor is currently borrowing.
-/// * `guarantor_a_guarantee_count`, `guarantor_b_guarantee_count` - Active + pending guarantee count per guarantor.
-#[allow(clippy::too_many_arguments)]
-pub fn validate_loan_request(
-    amount: u64,
-    borrower: Pubkey,
-    borrower_savings: u64,
-    borrower_has_active_loan: bool,
-    borrower_has_pending_loan: bool,
-    guarantor_a: Pubkey,
-    guarantor_b: Pubkey,
-    guarantor_a_has_active_loan: bool,
-    guarantor_b_has_active_loan: bool,
-    guarantor_a_guarantee_count: usize,
-    guarantor_b_guarantee_count: usize,
-) -> Result<(), PoolError> {
-    if amount == 0 {
+pub fn validate_loan_request(checks: LoanRequestChecks) -> Result<(), PoolError> {
+    if checks.amount == 0 {
         return Err(PoolError::LoanAmountMustBePositive);
     }
-    if borrower_has_active_loan {
+    if checks.borrower_has_active_loan {
         return Err(PoolError::ExistingActiveLoan);
     }
-    if borrower_has_pending_loan {
+    if checks.borrower_has_pending_loan {
         return Err(PoolError::ExistingPendingLoan);
     }
 
-    let max_loan = max_loan_for_savings(borrower_savings, MAX_LOAN_MULTIPLIER)
+    let max_loan = max_loan_for_savings(checks.borrower_savings, MAX_LOAN_MULTIPLIER)
         .ok_or(PoolError::LoanExceedsMaxMultiplier)?;
-    if amount > max_loan {
+    if checks.amount > max_loan {
         return Err(PoolError::LoanExceedsMaxMultiplier);
     }
 
-    if guarantor_a == borrower || guarantor_b == borrower {
+    if checks.guarantor_a == checks.borrower || checks.guarantor_b == checks.borrower {
         return Err(PoolError::SelfGuaranteeNotAllowed);
     }
-    if guarantor_a == guarantor_b {
+    if checks.guarantor_a == checks.guarantor_b {
         return Err(PoolError::DuplicateGuarantors);
     }
-    if guarantor_a_has_active_loan || guarantor_b_has_active_loan {
+    if checks.guarantor_a_has_active_loan || checks.guarantor_b_has_active_loan {
         return Err(PoolError::GuarantorHasActiveLoan);
     }
-    if guarantor_a_guarantee_count >= Member::MAX_GUARANTEES
-        || guarantor_b_guarantee_count >= Member::MAX_GUARANTEES
+    if checks.guarantor_a_guarantee_count >= Member::MAX_GUARANTEES
+        || checks.guarantor_b_guarantee_count >= Member::MAX_GUARANTEES
     {
         return Err(PoolError::GuarantorLimitReached);
     }
@@ -110,34 +113,49 @@ mod tests {
         )
     }
 
+    fn valid_request() -> LoanRequestChecks {
+        let (borrower, guarantor_a, guarantor_b) = keys();
+        LoanRequestChecks {
+            amount: 300,
+            borrower,
+            borrower_savings: 1_000,
+            borrower_has_active_loan: false,
+            borrower_has_pending_loan: false,
+            guarantor_a,
+            guarantor_b,
+            guarantor_a_has_active_loan: false,
+            guarantor_b_has_active_loan: false,
+            guarantor_a_guarantee_count: 0,
+            guarantor_b_guarantee_count: 0,
+        }
+    }
+
     #[test]
     fn rejects_zero_amount() {
-        let (borrower, ga, gb) = keys();
+        let mut checks = valid_request();
+        checks.amount = 0;
         assert_eq!(
-            validate_loan_request(0, borrower, 1_000, false, false, ga, gb, false, false, 0, 0)
-                .unwrap_err(),
+            validate_loan_request(checks).unwrap_err(),
             PoolError::LoanAmountMustBePositive
         );
     }
 
     #[test]
     fn rejects_excess_multiplier() {
-        let (borrower, ga, gb) = keys();
+        let mut checks = valid_request();
+        checks.amount = 4_000;
         assert_eq!(
-            validate_loan_request(4_000, borrower, 1_000, false, false, ga, gb, false, false, 0, 0)
-                .unwrap_err(),
+            validate_loan_request(checks).unwrap_err(),
             PoolError::LoanExceedsMaxMultiplier
         );
     }
 
     #[test]
     fn rejects_self_guarantee() {
-        let (borrower, ga, _) = keys();
+        let mut checks = valid_request();
+        checks.guarantor_a = checks.borrower;
         assert_eq!(
-            validate_loan_request(
-                100, borrower, 1_000, false, false, borrower, ga, false, false, 0, 0
-            )
-            .unwrap_err(),
+            validate_loan_request(checks).unwrap_err(),
             PoolError::SelfGuaranteeNotAllowed
         );
     }
@@ -155,72 +173,56 @@ mod tests {
 
     #[test]
     fn rejects_active_borrower_loan() {
-        let (borrower, ga, gb) = keys();
+        let mut checks = valid_request();
+        checks.borrower_has_active_loan = true;
         assert_eq!(
-            validate_loan_request(100, borrower, 1_000, true, false, ga, gb, false, false, 0, 0)
-                .unwrap_err(),
+            validate_loan_request(checks).unwrap_err(),
             PoolError::ExistingActiveLoan
         );
     }
 
     #[test]
     fn rejects_pending_borrower_loan() {
-        let (borrower, ga, gb) = keys();
+        let mut checks = valid_request();
+        checks.borrower_has_pending_loan = true;
         assert_eq!(
-            validate_loan_request(100, borrower, 1_000, false, true, ga, gb, false, false, 0, 0)
-                .unwrap_err(),
+            validate_loan_request(checks).unwrap_err(),
             PoolError::ExistingPendingLoan
         );
     }
 
     #[test]
     fn rejects_duplicate_guarantors() {
-        let (borrower, ga, _) = keys();
+        let mut checks = valid_request();
+        checks.guarantor_b = checks.guarantor_a;
         assert_eq!(
-            validate_loan_request(100, borrower, 1_000, false, false, ga, ga, false, false, 0, 0)
-                .unwrap_err(),
+            validate_loan_request(checks).unwrap_err(),
             PoolError::DuplicateGuarantors
         );
     }
 
     #[test]
     fn rejects_guarantor_with_active_loan() {
-        let (borrower, ga, gb) = keys();
+        let mut checks = valid_request();
+        checks.guarantor_a_has_active_loan = true;
         assert_eq!(
-            validate_loan_request(100, borrower, 1_000, false, false, ga, gb, true, false, 0, 0)
-                .unwrap_err(),
+            validate_loan_request(checks).unwrap_err(),
             PoolError::GuarantorHasActiveLoan
         );
     }
 
     #[test]
     fn rejects_guarantor_limit() {
-        let (borrower, ga, gb) = keys();
+        let mut checks = valid_request();
+        checks.guarantor_a_guarantee_count = Member::MAX_GUARANTEES;
         assert_eq!(
-            validate_loan_request(
-                100,
-                borrower,
-                1_000,
-                false,
-                false,
-                ga,
-                gb,
-                false,
-                false,
-                Member::MAX_GUARANTEES,
-                0
-            )
-            .unwrap_err(),
+            validate_loan_request(checks).unwrap_err(),
             PoolError::GuarantorLimitReached
         );
     }
 
     #[test]
     fn accepts_valid_request() {
-        let (borrower, ga, gb) = keys();
-        assert!(validate_loan_request(
-            300, borrower, 1_000, false, false, ga, gb, false, false, 0, 0
-        )
-        .is_ok());
+        assert!(validate_loan_request(valid_request()).is_ok());
     }
 }

@@ -15,8 +15,9 @@ pub mod repay_ops;
 
 pub use default_ops::{split_outstanding_50_50, validate_guarantor_default_coverage};
 pub use guarantee_ops::{
-    clear_guarantee_refs, push_active_guarantee, push_pending_guarantee, release_savings,
-    reserve_savings, unlocked_savings,
+    clear_active_guarantee, clear_pending_guarantee, move_pending_to_active, push_active_guarantee,
+    push_pending_guarantee, release_active_guarantee, release_savings, reserve_savings,
+    unlocked_savings,
 };
 
 pub use exit_checks::*;

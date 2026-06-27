@@ -5,6 +5,7 @@
 //! `*Accounts` struct and its fields for the public account layout.
 
 #![allow(missing_docs)] // Anchor `Accounts` / `#[instruction]` generated items.
+#![allow(ambiguous_glob_reexports)] // Each instruction module has an internal `handle`.
 
 /// Accounts for [`crate::cancel_loan`].
 pub mod cancel_loan;

@@ -61,6 +61,9 @@ pub fn release_savings(member: &mut Member, amount: u64) -> Result<(), PoolError
 /// * `member` - Guarantor member account to update.
 /// * `loan_key` - Disbursed loan PDA pubkey.
 pub fn push_active_guarantee(member: &mut Member, loan_key: Pubkey) -> Result<(), PoolError> {
+    if member.active_guarantees.contains(&loan_key) {
+        return Ok(());
+    }
     if member.active_guarantees.len() >= Member::MAX_GUARANTEES {
         return Err(PoolError::GuarantorLimitReached);
     }
@@ -68,15 +71,32 @@ pub fn push_active_guarantee(member: &mut Member, loan_key: Pubkey) -> Result<()
     Ok(())
 }
 
-/// Removes a loan from pending and active guarantee lists.
-///
-/// # Arguments
-///
-/// * `member` - Guarantor member account to update.
-/// * `loan_key` - Loan PDA to remove from both guarantee vectors.
-pub fn clear_guarantee_refs(member: &mut Member, loan_key: &Pubkey) {
+/// Removes a loan from the pending guarantee list.
+pub fn clear_pending_guarantee(member: &mut Member, loan_key: &Pubkey) {
     member.pending_guarantees.retain(|g| g != loan_key);
+}
+
+/// Removes a loan from the active guarantee list.
+pub fn clear_active_guarantee(member: &mut Member, loan_key: &Pubkey) {
     member.active_guarantees.retain(|g| g != loan_key);
+}
+
+/// Moves a pending co-sign obligation into the active guarantee list.
+pub fn move_pending_to_active(member: &mut Member, loan_key: Pubkey) -> Result<(), PoolError> {
+    push_active_guarantee(member, loan_key)?;
+    clear_pending_guarantee(member, &loan_key);
+    Ok(())
+}
+
+/// Releases reserved savings and clears an active guarantee reference.
+pub fn release_active_guarantee(
+    member: &mut Member,
+    loan_key: &Pubkey,
+    locked_amount: u64,
+) -> Result<(), PoolError> {
+    release_savings(member, locked_amount)?;
+    clear_active_guarantee(member, loan_key);
+    Ok(())
 }
 
 #[cfg(test)]
@@ -131,14 +151,31 @@ mod tests {
     }
 
     #[test]
-    fn test_clear_guarantee_refs() {
+    fn clears_pending_and_active_separately() {
         let loan = Pubkey::new_unique();
         let mut member = empty_member();
         member.pending_guarantees.push(loan);
         member.active_guarantees.push(loan);
-        clear_guarantee_refs(&mut member, &loan);
+
+        clear_pending_guarantee(&mut member, &loan);
         assert!(member.pending_guarantees.is_empty());
+        assert_eq!(member.active_guarantees, vec![loan]);
+
+        clear_active_guarantee(&mut member, &loan);
         assert!(member.active_guarantees.is_empty());
+    }
+
+    #[test]
+    fn moves_pending_to_active_once() {
+        let loan = Pubkey::new_unique();
+        let mut member = empty_member();
+        member.pending_guarantees.push(loan);
+
+        move_pending_to_active(&mut member, loan).unwrap();
+        move_pending_to_active(&mut member, loan).unwrap();
+
+        assert!(member.pending_guarantees.is_empty());
+        assert_eq!(member.active_guarantees, vec![loan]);
     }
 
     #[test]
@@ -157,5 +194,19 @@ mod tests {
 
         release_savings(&mut member, 600).unwrap();
         assert_eq!(member.locked_savings, 0);
+    }
+
+    #[test]
+    fn release_active_guarantee_releases_savings_and_reference() {
+        let loan = Pubkey::new_unique();
+        let mut member = empty_member();
+        member.savings_balance = 1_000;
+        reserve_savings(&mut member, 500).unwrap();
+        push_active_guarantee(&mut member, loan).unwrap();
+
+        release_active_guarantee(&mut member, &loan, 500).unwrap();
+
+        assert_eq!(member.locked_savings, 0);
+        assert!(member.active_guarantees.is_empty());
     }
 }

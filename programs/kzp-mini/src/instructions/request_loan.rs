@@ -3,7 +3,7 @@
 use anchor_lang::prelude::*;
 
 use crate::error::PoolError;
-use crate::operations::validate_loan_request;
+use crate::operations::{validate_loan_request, LoanRequestChecks};
 use crate::state::LoanStatus;
 use crate::state::{Loan, Member, Pool};
 use crate::utils::seeds::{LOAN_SEED, MEMBER_SEED};
@@ -88,21 +88,21 @@ pub fn handle(
         .ok_or(ProgramError::ArithmeticOverflow)?;
 
     let borrower = &ctx.accounts.member_account;
-    validate_loan_request(
+    validate_loan_request(LoanRequestChecks {
         amount,
-        ctx.accounts.borrower.key(),
-        borrower.savings_balance,
-        borrower.active_loan.is_some(),
-        borrower.pending_loan.is_some(),
-        ctx.accounts.guarantor_a.key(),
-        ctx.accounts.guarantor_b.key(),
-        ctx.accounts.guarantor_a_member.active_loan.is_some(),
-        ctx.accounts.guarantor_b_member.active_loan.is_some(),
-        ctx.accounts.guarantor_a_member.active_guarantees.len()
+        borrower: ctx.accounts.borrower.key(),
+        borrower_savings: borrower.savings_balance,
+        borrower_has_active_loan: borrower.active_loan.is_some(),
+        borrower_has_pending_loan: borrower.pending_loan.is_some(),
+        guarantor_a: ctx.accounts.guarantor_a.key(),
+        guarantor_b: ctx.accounts.guarantor_b.key(),
+        guarantor_a_has_active_loan: ctx.accounts.guarantor_a_member.active_loan.is_some(),
+        guarantor_b_has_active_loan: ctx.accounts.guarantor_b_member.active_loan.is_some(),
+        guarantor_a_guarantee_count: ctx.accounts.guarantor_a_member.active_guarantees.len()
             + ctx.accounts.guarantor_a_member.pending_guarantees.len(),
-        ctx.accounts.guarantor_b_member.active_guarantees.len()
+        guarantor_b_guarantee_count: ctx.accounts.guarantor_b_member.active_guarantees.len()
             + ctx.accounts.guarantor_b_member.pending_guarantees.len(),
-    )?;
+    })?;
 
     let loan = &mut ctx.accounts.loan;
     loan.pool = ctx.accounts.pool.key();
