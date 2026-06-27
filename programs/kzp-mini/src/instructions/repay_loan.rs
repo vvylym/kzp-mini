@@ -1,9 +1,13 @@
 //! Accounts for [`crate::repay_loan`].
 
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Token, TokenAccount};
+use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 use crate::error::PoolError;
+use crate::operations::{
+    apply_repayment, release_savings, split_outstanding_50_50, validate_borrower,
+    validate_repayment,
+};
 use crate::state::{Loan, Member, Pool};
 use crate::utils::seeds::{MEMBER_SEED, VAULT_SEED};
 
@@ -74,4 +78,54 @@ pub struct RepayLoan<'info> {
 
     /// SPL Token program.
     pub token_program: Program<'info, Token>,
+}
+
+/// Transfers repayment to vault and updates loan, pool, and guarantee state.
+pub fn handle(ctx: Context<RepayLoan>, amount: u64) -> Result<()> {
+    let loan = &mut ctx.accounts.loan;
+    validate_borrower(ctx.accounts.borrower.key(), loan.borrower)?;
+    validate_repayment(loan.status.clone(), loan.outstanding, amount)?;
+
+    token::transfer(
+        CpiContext::new(
+            ctx.accounts.token_program.key(),
+            Transfer {
+                from: ctx.accounts.borrower_token_account.to_account_info(),
+                to: ctx.accounts.vault.to_account_info(),
+                authority: ctx.accounts.borrower.to_account_info(),
+            },
+        ),
+        amount,
+    )?;
+
+    let (new_outstanding, fully_repaid) = apply_repayment(loan.outstanding, amount)?;
+    loan.outstanding = new_outstanding;
+
+    let pool = &mut ctx.accounts.pool;
+    pool.total_outstanding_loans = pool
+        .total_outstanding_loans
+        .checked_sub(amount)
+        .ok_or(ProgramError::ArithmeticOverflow)?;
+
+    if fully_repaid {
+        loan.status = crate::state::LoanStatus::Repaid;
+
+        let loan_key = loan.key();
+        if ctx.accounts.borrower_member.active_loan == Some(loan_key) {
+            ctx.accounts.borrower_member.active_loan = None;
+        }
+        let (share_a, share_b) = split_outstanding_50_50(loan.principal);
+        release_savings(&mut ctx.accounts.guarantor_a_member, share_a)?;
+        release_savings(&mut ctx.accounts.guarantor_b_member, share_b)?;
+        ctx.accounts
+            .guarantor_a_member
+            .active_guarantees
+            .retain(|g| g != &loan_key);
+        ctx.accounts
+            .guarantor_b_member
+            .active_guarantees
+            .retain(|g| g != &loan_key);
+    }
+
+    Ok(())
 }

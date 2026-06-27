@@ -1,6 +1,6 @@
 # Instructions
 
-Account layouts are defined in `programs/kzp-mini/src/instructions/`. Handler logic lives in `programs/kzp-mini/src/handlers/*/handle`.
+Account layouts and handler logic live together in `programs/kzp-mini/src/instructions/*`.
 
 ## `initialize_pool`
 

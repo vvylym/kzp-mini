@@ -68,15 +68,14 @@ Full account metas: [INSTRUCTIONS.md](./INSTRUCTIONS.md). Field layouts: [STATE.
 
 ```
 programs/kzp-mini/src/
-├── lib.rs              #[program] dispatch → handlers::*::handle
+├── lib.rs              #[program] dispatch → instructions::*::handle
 ├── state.rs            Pool, Member, Loan, LoanStatus
-├── instructions/       Anchor account constraints only
-├── handlers/           CPIs + state updates; one handle per instruction
+├── instructions/       Anchor account constraints + one handle per instruction
 ├── operations/         Pure rules/math (unit-tested)
 └── utils/              PDA seeds and helpers
 ```
 
-**Design split:** `instructions/` = validation · `handlers/` = orchestration · `operations/` = pure business rules testable without Anchor contexts.
+**Design split:** `instructions/` = account validation and orchestration · `operations/` = pure business rules testable without Anchor contexts.
 
 The file `instructions/withdraw_co_sign.rs` maps to the `withdraw_cosign` instruction name.
 

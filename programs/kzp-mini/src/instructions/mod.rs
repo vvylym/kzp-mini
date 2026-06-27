@@ -1,4 +1,4 @@
-//! Anchor account contexts for each instruction.
+//! Anchor account contexts and handlers for each instruction.
 //!
 //! The `Accounts` derive also emits helper types (`*Bumps`, instruction-arg views).
 //! Those macro-generated items are intentionally not documented here; see each

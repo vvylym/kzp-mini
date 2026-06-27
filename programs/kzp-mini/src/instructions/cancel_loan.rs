@@ -3,6 +3,7 @@
 use anchor_lang::prelude::*;
 
 use crate::error::PoolError;
+use crate::operations::clear_guarantee_refs;
 use crate::state::{Loan, Member};
 use crate::utils::seeds::MEMBER_SEED;
 
@@ -51,4 +52,15 @@ pub struct CancelLoan<'info> {
         constraint = guarantor_b_member.pool == loan.pool,
     )]
     pub guarantor_b_member: Box<Account<'info, Member>>,
+}
+
+/// Clears guarantor pending refs before the loan account is closed.
+pub fn handle(ctx: Context<CancelLoan>) -> Result<()> {
+    let loan_key = ctx.accounts.loan.key();
+    if ctx.accounts.borrower_member.pending_loan == Some(loan_key) {
+        ctx.accounts.borrower_member.pending_loan = None;
+    }
+    clear_guarantee_refs(&mut ctx.accounts.guarantor_a_member, &loan_key);
+    clear_guarantee_refs(&mut ctx.accounts.guarantor_b_member, &loan_key);
+    Ok(())
 }

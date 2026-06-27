@@ -3,6 +3,8 @@
 use anchor_lang::prelude::*;
 
 use crate::error::PoolError;
+use crate::operations::validate_loan_request;
+use crate::state::LoanStatus;
 use crate::state::{Loan, Member, Pool};
 use crate::utils::seeds::{LOAN_SEED, MEMBER_SEED};
 
@@ -70,4 +72,53 @@ pub struct RequestLoan<'info> {
 
     /// System program for loan account creation.
     pub system_program: Program<'info, System>,
+}
+
+/// Validates loan rules and initializes a pending loan account.
+pub fn handle(
+    ctx: Context<RequestLoan>,
+    _loan_nonce: u64,
+    amount: u64,
+    loan_term_seconds: i64,
+) -> Result<()> {
+    require!(loan_term_seconds >= 0, PoolError::InvalidLoanTerm);
+    let now = Clock::get()?.unix_timestamp;
+    let due_ts = now
+        .checked_add(loan_term_seconds)
+        .ok_or(ProgramError::ArithmeticOverflow)?;
+
+    let borrower = &ctx.accounts.member_account;
+    validate_loan_request(
+        amount,
+        ctx.accounts.borrower.key(),
+        borrower.savings_balance,
+        borrower.active_loan.is_some(),
+        borrower.pending_loan.is_some(),
+        ctx.accounts.guarantor_a.key(),
+        ctx.accounts.guarantor_b.key(),
+        ctx.accounts.guarantor_a_member.active_loan.is_some(),
+        ctx.accounts.guarantor_b_member.active_loan.is_some(),
+        ctx.accounts.guarantor_a_member.active_guarantees.len()
+            + ctx.accounts.guarantor_a_member.pending_guarantees.len(),
+        ctx.accounts.guarantor_b_member.active_guarantees.len()
+            + ctx.accounts.guarantor_b_member.pending_guarantees.len(),
+    )?;
+
+    let loan = &mut ctx.accounts.loan;
+    loan.pool = ctx.accounts.pool.key();
+    loan.borrower = ctx.accounts.borrower.key();
+    loan.principal = amount;
+    loan.outstanding = amount;
+    loan.guarantor_a = ctx.accounts.guarantor_a.key();
+    loan.guarantor_b = ctx.accounts.guarantor_b.key();
+    loan.guarantor_a_signed = false;
+    loan.guarantor_b_signed = false;
+    loan.status = LoanStatus::Pending;
+    loan.due_ts = due_ts;
+    loan.bump = ctx.bumps.loan;
+    loan.vault_bump = ctx.accounts.pool.vault_bump;
+
+    ctx.accounts.member_account.pending_loan = Some(loan.key());
+
+    Ok(())
 }

@@ -262,8 +262,7 @@ Full threat model: [docs/SECURITY.md](docs/SECURITY.md).
 
 ```
 programs/kzp-mini/src/
-├── instructions/   Anchor account constraints
-├── handlers/       CPIs + state updates
+├── instructions/   Anchor account constraints + one handle per instruction
 ├── operations/     Pure business rules (unit-tested)
 ├── state.rs        Pool, Member, Loan
 └── utils/          PDA helpers
@@ -275,7 +274,7 @@ scripts/            ci.sh, deploy.sh, devnet-demo.sh
 keys/               Local keypairs (gitignored)
 ```
 
-**Philosophy:** `instructions` = validation · `handlers` = orchestration · `operations` = testable rules without Anchor contexts.
+**Philosophy:** `instructions` = account validation and orchestration · `operations` = testable rules without Anchor contexts.
 
 ---
 
