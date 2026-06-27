@@ -78,6 +78,110 @@ with_universe!(settle_default_nominal, |app, u| {
     assert_eq!(app.token_balance(&vault).await, vault_before);
 });
 
+// Spec: edge - odd outstanding amount is split deterministically and reconciles exactly.
+//
+// Given:
+// - An active loan with an odd outstanding amount
+//
+// When:
+// - Admin settles the default after the due date
+//
+// Then:
+// - Guarantor A pays the rounded-up share, guarantor B pays the remainder, and totals reconcile
+with_universe!(settle_default_splits_odd_outstanding_exactly, |app, u| {
+    let amount = 1_000_000_001;
+    let loan_key = app
+        .activate_loan_with_term(
+            &u.borrower,
+            u.pool,
+            34,
+            amount,
+            &u.guarantor_a,
+            &u.guarantor_b,
+            u.borrower_ata,
+            0,
+        )
+        .await;
+
+    let pool_before = app.fetch_pool(&u.pool).await;
+    let (ga_member, _) = member_pda(&u.pool, &u.guarantor_a.pubkey());
+    let (gb_member, _) = member_pda(&u.pool, &u.guarantor_b.pubkey());
+    let ga_before = app.fetch_member(&ga_member).await;
+    let gb_before = app.fetch_member(&gb_member).await;
+
+    let ix = app.settle_default(&u.admin, loan_key).await;
+    app.process(&[ix], &[&u.admin]).await;
+
+    let ga_after = app.fetch_member(&ga_member).await;
+    let gb_after = app.fetch_member(&gb_member).await;
+    let pool_after = app.fetch_pool(&u.pool).await;
+
+    assert_eq!(
+        ga_before.savings_balance - ga_after.savings_balance,
+        500_000_001
+    );
+    assert_eq!(
+        gb_before.savings_balance - gb_after.savings_balance,
+        500_000_000
+    );
+    assert_eq!(pool_before.total_savings - pool_after.total_savings, amount);
+    assert_eq!(pool_after.total_outstanding_loans, 0);
+    assert_eq!(ga_after.locked_savings, 0);
+    assert_eq!(gb_after.locked_savings, 0);
+});
+
+// Spec: edge - settlement releases guarantees but clears only the matching borrower active loan.
+//
+// Given:
+// - An active loan ready for default settlement
+// - Borrower's member account has drifted to point at a different active loan
+//
+// When:
+// - Admin settles the original defaulted loan
+//
+// Then:
+// - Guarantor obligations are released and the non-matching borrower active loan is preserved
+with_universe!(
+    settle_default_preserves_nonmatching_borrower_active_loan,
+    |app, u| {
+        let amount = 600_000_000;
+        let loan_key = app
+            .activate_loan_with_term(
+                &u.borrower,
+                u.pool,
+                35,
+                amount,
+                &u.guarantor_a,
+                &u.guarantor_b,
+                u.borrower_ata,
+                0,
+            )
+            .await;
+
+        let other_active_loan = Pubkey::new_unique();
+        let (borrower_member, _) = member_pda(&u.pool, &u.borrower.pubkey());
+        let mut borrower_state = app.fetch_member(&borrower_member).await;
+        borrower_state.active_loan = Some(other_active_loan);
+        app.overwrite_member(&borrower_member, &borrower_state)
+            .await;
+
+        let ix = app.settle_default(&u.admin, loan_key).await;
+        app.process(&[ix], &[&u.admin]).await;
+
+        let borrower_after = app.fetch_member(&borrower_member).await;
+        let (ga_member, _) = member_pda(&u.pool, &u.guarantor_a.pubkey());
+        let (gb_member, _) = member_pda(&u.pool, &u.guarantor_b.pubkey());
+        let ga_after = app.fetch_member(&ga_member).await;
+        let gb_after = app.fetch_member(&gb_member).await;
+
+        assert_eq!(borrower_after.active_loan, Some(other_active_loan));
+        assert_eq!(ga_after.locked_savings, 0);
+        assert_eq!(gb_after.locked_savings, 0);
+        assert!(!ga_after.active_guarantees.contains(&loan_key));
+        assert!(!gb_after.active_guarantees.contains(&loan_key));
+    }
+);
+
 // Spec: edge - default before due date is rejected (`LoanNotDue`).
 //
 // Given:
