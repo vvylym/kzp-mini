@@ -13,10 +13,10 @@ license = "MIT"
 repository = "https://github.com/vvylym/kzp-mini"
 
 [workspace.dependencies]
-anchor-lang = "1.0.2"
-anchor-spl = "1.0.2"
+anchor-lang = "1.1.2"
+anchor-spl = "1.1.2"
 kzp-mini = { path = "programs/kzp-mini" }
-solana-client = "3.0.0"
+solana-client = "3.1.12"
 solana-program-test = { version = "3.1.12", features = ["agave-unstable-api"] }
 solana-sdk = "3.0.0"
 tokio = { version = "1.52", features = ["macros", "rt-multi-thread"] }
