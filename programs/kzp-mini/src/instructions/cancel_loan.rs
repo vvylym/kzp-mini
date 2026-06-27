@@ -55,7 +55,7 @@ pub struct CancelLoan<'info> {
 }
 
 /// Clears guarantor pending refs before the loan account is closed.
-pub fn handle(ctx: Context<CancelLoan>) -> Result<()> {
+pub fn handle_cancel_loan(ctx: Context<CancelLoan>) -> Result<()> {
     let loan_key = ctx.accounts.loan.key();
     if ctx.accounts.borrower_member.pending_loan == Some(loan_key) {
         ctx.accounts.borrower_member.pending_loan = None;

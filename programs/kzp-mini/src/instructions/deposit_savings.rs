@@ -51,7 +51,7 @@ pub struct DepositSavings<'info> {
 }
 
 /// Transfers tokens to the vault and credits member and pool savings ledgers.
-pub fn handle(ctx: Context<DepositSavings>, amount: u64) -> Result<()> {
+pub fn handle_deposit_savings(ctx: Context<DepositSavings>, amount: u64) -> Result<()> {
     validate_positive_amount(amount)?;
 
     token::transfer(

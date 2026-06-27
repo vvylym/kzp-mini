@@ -1,6 +1,6 @@
-use crate::helpers::{initialized_pool, TestApp, ENTRY_FEE};
+use crate::helpers::{ENTRY_FEE, TestApp, initialized_pool};
+use kzp_mini::error::PoolError;
 use kzp_mini::utils::pda::{member_pda, vault_pda};
-use kzp_mini::PoolError;
 use solana_sdk::{pubkey::Pubkey, signature::Signer};
 
 /// Shared fixtures for [`join_pool`](kzp_mini::join_pool) integration tests.

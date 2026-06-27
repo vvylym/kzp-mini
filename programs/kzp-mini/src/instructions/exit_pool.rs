@@ -52,7 +52,7 @@ pub struct ExitPool<'info> {
 }
 
 /// Validates eligibility and vault liquidity, then pays savings and closes the member PDA.
-pub fn handle(ctx: Context<ExitPool>) -> Result<()> {
+pub fn handle_exit_pool(ctx: Context<ExitPool>) -> Result<()> {
     let member = &ctx.accounts.member_account;
     validate_exit_eligible(
         member.active_loan.is_some(),

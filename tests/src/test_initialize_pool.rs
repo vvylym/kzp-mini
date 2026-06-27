@@ -1,7 +1,7 @@
-use crate::helpers::{funded_admin, TestApp, ENTRY_FEE, POOL_NAME};
+use crate::helpers::{ENTRY_FEE, POOL_NAME, TestApp, funded_admin};
+use kzp_mini::constants::MAX_POOL_NAME_LEN;
+use kzp_mini::error::PoolError;
 use kzp_mini::utils::pda::{pool_pda, vault_pda};
-use kzp_mini::PoolError;
-use kzp_mini::MAX_POOL_NAME_LEN;
 use solana_sdk::signature::{Keypair, Signer};
 
 /// Shared fixtures for [`initialize_pool`](kzp_mini::initialize_pool) integration tests.

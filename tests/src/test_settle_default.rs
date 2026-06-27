@@ -1,7 +1,7 @@
-use crate::helpers::{funded_admin, member_with_savings, TestApp};
+use crate::helpers::{TestApp, funded_admin, member_with_savings};
+use kzp_mini::error::PoolError;
 use kzp_mini::state::LoanStatus;
 use kzp_mini::utils::pda::member_pda;
-use kzp_mini::PoolError;
 use solana_sdk::{pubkey::Pubkey, signature::Signer};
 
 /// Shared fixtures for [`settle_default`](kzp_mini::settle_default) integration tests.

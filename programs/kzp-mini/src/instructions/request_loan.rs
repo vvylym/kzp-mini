@@ -3,7 +3,7 @@
 use anchor_lang::prelude::*;
 
 use crate::error::PoolError;
-use crate::operations::{validate_loan_request, LoanRequestChecks};
+use crate::operations::{LoanRequestChecks, validate_loan_request};
 use crate::state::LoanStatus;
 use crate::state::{Loan, Member, Pool};
 use crate::utils::seeds::{LOAN_SEED, MEMBER_SEED};
@@ -75,7 +75,7 @@ pub struct RequestLoan<'info> {
 }
 
 /// Validates loan rules and initializes a pending loan account.
-pub fn handle(
+pub fn handle_request_loan(
     ctx: Context<RequestLoan>,
     _loan_nonce: u64,
     amount: u64,

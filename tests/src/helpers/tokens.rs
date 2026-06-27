@@ -2,9 +2,9 @@
 
 use anchor_spl::associated_token::get_associated_token_address;
 use anchor_spl::associated_token::spl_associated_token_account::instruction::create_associated_token_account_idempotent;
+use anchor_spl::token::ID as TOKEN_PROGRAM_ID;
 use anchor_spl::token::spl_token;
 use anchor_spl::token::spl_token::state::Account as TokenAccountState;
-use anchor_spl::token::ID as TOKEN_PROGRAM_ID;
 use solana_sdk::{
     program_pack::Pack,
     pubkey::Pubkey,

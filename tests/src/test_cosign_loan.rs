@@ -1,7 +1,7 @@
-use crate::helpers::{initialized_pool, member_with_savings, TestApp};
+use crate::helpers::{TestApp, initialized_pool, member_with_savings};
+use kzp_mini::error::PoolError;
 use kzp_mini::state::LoanStatus;
 use kzp_mini::utils::pda::{loan_pda, member_pda, vault_pda};
-use kzp_mini::PoolError;
 use solana_sdk::{
     pubkey::Pubkey,
     signature::{Keypair, Signer},

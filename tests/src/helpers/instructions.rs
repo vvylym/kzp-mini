@@ -1,8 +1,8 @@
 //! Instruction builders mirroring the on-chain `kzp-mini` account layouts.
 
-use anchor_lang::{system_program, InstructionData, ToAccountMetas};
+use anchor_lang::{InstructionData, ToAccountMetas, system_program};
 use anchor_spl::token::ID as TOKEN_PROGRAM_ID;
-use kzp_mini::{accounts, instruction, ID as PROGRAM_ID};
+use kzp_mini::{ID as PROGRAM_ID, accounts, instruction};
 use solana_sdk::{
     instruction::Instruction,
     pubkey::Pubkey,

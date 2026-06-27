@@ -1,6 +1,6 @@
 //! Shared constants and error-code helpers for integration tests.
 
-use kzp_mini::PoolError;
+use kzp_mini::error::PoolError;
 
 /// Default pool name used across tests (matches spec examples).
 pub const POOL_NAME: &str = "Fabryka Lodz KZP";

@@ -5,8 +5,8 @@ use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 use crate::error::PoolError;
 use crate::operations::{
-    guarantor_slot, move_pending_to_active, push_pending_guarantee, reserve_savings,
-    split_outstanding_50_50, validate_vault_liquidity, GuarantorSlot,
+    GuarantorSlot, guarantor_slot, move_pending_to_active, push_pending_guarantee, reserve_savings,
+    split_outstanding_50_50, validate_vault_liquidity,
 };
 use crate::state::{Loan, Member, Pool};
 use crate::utils::seeds::{MEMBER_SEED, VAULT_SEED};
@@ -81,7 +81,7 @@ pub struct CoSignLoan<'info> {
 }
 
 /// Records partial co-sign or disburses principal when both guarantors have signed.
-pub fn handle(ctx: Context<CoSignLoan>) -> Result<()> {
+pub fn handle_co_sign_loan(ctx: Context<CoSignLoan>) -> Result<()> {
     let loan = &mut ctx.accounts.loan;
     require!(
         loan.status == crate::state::LoanStatus::Pending,

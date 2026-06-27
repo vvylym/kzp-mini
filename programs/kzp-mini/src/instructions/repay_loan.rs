@@ -80,7 +80,7 @@ pub struct RepayLoan<'info> {
 }
 
 /// Transfers repayment to vault and updates loan, pool, and guarantee state.
-pub fn handle(ctx: Context<RepayLoan>, amount: u64) -> Result<()> {
+pub fn handle_repay_loan(ctx: Context<RepayLoan>, amount: u64) -> Result<()> {
     let loan = &mut ctx.accounts.loan;
     validate_borrower(ctx.accounts.borrower.key(), loan.borrower)?;
     validate_repayment(loan.status.clone(), loan.outstanding, amount)?;

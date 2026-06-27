@@ -1,6 +1,6 @@
-use crate::helpers::{initialized_pool, member_with_savings, TestApp};
+use crate::helpers::{TestApp, initialized_pool, member_with_savings};
+use kzp_mini::error::PoolError;
 use kzp_mini::utils::pda::{loan_pda, member_pda};
-use kzp_mini::PoolError;
 use solana_sdk::{pubkey::Pubkey, signature::Signer};
 
 /// Shared fixtures for [`cancel_loan`](kzp_mini::cancel_loan) integration tests.

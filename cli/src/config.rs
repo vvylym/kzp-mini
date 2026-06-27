@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
-use solana_sdk::signature::{read_keypair_file, Keypair};
+use solana_sdk::signature::{Keypair, read_keypair_file};
 
 /// Supported Solana clusters.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Serialize, Deserialize)]
@@ -84,14 +84,14 @@ fn default_wallet_path() -> Option<PathBuf> {
 
 fn detect_cluster_from_solana_config() -> Cluster {
     let config_path = home_dir().map(|h| h.join(".config/solana/cli/config.yml"));
-    if let Some(path) = config_path.filter(|p| p.exists()) {
-        if let Ok(contents) = std::fs::read_to_string(path) {
-            if contents.contains("devnet") {
-                return Cluster::Devnet;
-            }
-            if contents.contains("mainnet") {
-                return Cluster::Mainnet;
-            }
+    if let Some(path) = config_path.filter(|p| p.exists())
+        && let Ok(contents) = std::fs::read_to_string(path)
+    {
+        if contents.contains("devnet") {
+            return Cluster::Devnet;
+        }
+        if contents.contains("mainnet") {
+            return Cluster::Mainnet;
         }
     }
     Cluster::Devnet

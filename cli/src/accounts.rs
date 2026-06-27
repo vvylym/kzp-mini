@@ -1,9 +1,9 @@
 //! On-chain account fetching for the CLI.
 
 use anchor_lang::AccountDeserialize;
-use anyhow::{bail, Context, Result};
-use kzp_mini::state::{Loan, Pool};
+use anyhow::{Context, Result, bail};
 use kzp_mini::ID as PROGRAM_ID;
+use kzp_mini::state::{Loan, Pool};
 use solana_sdk::{account::Account, pubkey::Pubkey};
 
 use crate::client::KzpClient;

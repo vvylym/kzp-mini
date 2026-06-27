@@ -50,7 +50,7 @@ pub struct InitializePool<'info> {
 }
 
 /// Initializes pool and vault state after validating the pool name.
-pub fn handle(
+pub fn handle_initialize_pool(
     ctx: Context<InitializePool>,
     pool_name: String,
     required_entry_fee: u64,

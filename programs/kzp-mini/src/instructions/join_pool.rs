@@ -53,7 +53,7 @@ pub struct JoinPool<'info> {
 }
 
 /// Transfers entry fee to vault and initializes member state.
-pub fn handle(ctx: Context<JoinPool>, entry_fee: u64) -> Result<()> {
+pub fn handle_join_pool(ctx: Context<JoinPool>, entry_fee: u64) -> Result<()> {
     let pool = &ctx.accounts.pool;
     require!(
         entry_fee == pool.required_entry_fee,

@@ -27,9 +27,6 @@
 //!
 //! Architecture and design: repository `README.md`. Instruction/state reference: `docs/`.
 
-#![allow(clippy::result_large_err)]
-#![allow(clippy::diverging_sub_expression)]
-
 /// Protocol-wide numeric limits and naming constraints.
 pub mod constants;
 /// Custom [`PoolError`] codes returned by instruction handlers.
@@ -44,11 +41,7 @@ pub mod state;
 pub mod utils;
 
 use anchor_lang::prelude::*;
-
-pub use constants::*;
-pub use error::*;
-pub use instructions::*;
-pub use state::*;
+use instructions::*;
 
 declare_id!("GsjUnBFvYtcxNwCrydPUjQTngGTqdx5v7APnWahnqwkx");
 
@@ -76,21 +69,21 @@ pub mod kzp_mini {
         pool_name: String,
         required_entry_fee: u64,
     ) -> Result<()> {
-        instructions::initialize_pool::handle(ctx, pool_name, required_entry_fee)
+        handle_initialize_pool(ctx, pool_name, required_entry_fee)
     }
 
     /// Pays the required entry fee and initializes a member account.
     ///
     /// * `entry_fee` - Must equal `pool.required_entry_fee`.
     pub fn join_pool(ctx: Context<JoinPool>, entry_fee: u64) -> Result<()> {
-        instructions::join_pool::handle(ctx, entry_fee)
+        handle_join_pool(ctx, entry_fee)
     }
 
     /// Deposits tokens from the member ATA into the pool vault.
     ///
     /// * `amount` - SPL tokens to credit to `member.savings_balance` (must be > 0).
     pub fn deposit_savings(ctx: Context<DepositSavings>, amount: u64) -> Result<()> {
-        instructions::deposit_savings::handle(ctx, amount)
+        handle_deposit_savings(ctx, amount)
     }
 
     /// Requests a new loan pending two guarantor co-signatures.
@@ -103,7 +96,7 @@ pub mod kzp_mini {
         amount: u64,
         loan_term_seconds: i64,
     ) -> Result<()> {
-        instructions::request_loan::handle(ctx, loan_nonce, amount, loan_term_seconds)
+        handle_request_loan(ctx, loan_nonce, amount, loan_term_seconds)
     }
 
     /// Co-signs a pending loan; disburses principal when both guarantors sign.
@@ -111,35 +104,35 @@ pub mod kzp_mini {
     /// The signing guarantor must be `loan.guarantor_a` or `loan.guarantor_b`.
     /// Disbursement runs automatically once both flags are set and the vault has liquidity.
     pub fn co_sign_loan(ctx: Context<CoSignLoan>) -> Result<()> {
-        instructions::co_sign_loan::handle(ctx)
+        handle_co_sign_loan(ctx)
     }
 
     /// Repays an active loan partially or in full.
     ///
     /// * `amount` - SPL tokens sent to the vault (must be > 0 and ≤ outstanding).
     pub fn repay_loan(ctx: Context<RepayLoan>, amount: u64) -> Result<()> {
-        instructions::repay_loan::handle(ctx, amount)
+        handle_repay_loan(ctx, amount)
     }
 
     /// Cancels a pending loan (borrower only); clears guarantor pending obligations.
     ///
     /// The loan account is closed and rent returned to the borrower.
     pub fn cancel_loan(ctx: Context<CancelLoan>) -> Result<()> {
-        instructions::cancel_loan::handle(ctx)
+        handle_cancel_loan(ctx)
     }
 
     /// Withdraws a partial co-sign before both guarantors approve disbursement.
     ///
     /// Only the guarantor who previously co-signed may call this while the loan is pending.
     pub fn withdraw_cosign(ctx: Context<WithdrawCosign>) -> Result<()> {
-        instructions::withdraw_co_sign::handle(ctx)
+        handle_withdraw_cosign(ctx)
     }
 
     /// Admin marks a due active loan defaulted; guarantors cover 50/50 from reserved savings ledger.
     ///
     /// Requires `pool.admin`; guarantor consent was captured when liability was reserved on activation.
     pub fn settle_default(ctx: Context<SettleDefault>) -> Result<()> {
-        instructions::settle_default::handle(ctx)
+        handle_settle_default(ctx)
     }
 
     /// Withdraws savings and closes the member account when obligations are clear.
@@ -147,6 +140,6 @@ pub mod kzp_mini {
     /// Fails if the member has an active loan, active guarantees, pending co-signs,
     /// or if the vault SPL balance is below `member.savings_balance`.
     pub fn exit_pool(ctx: Context<ExitPool>) -> Result<()> {
-        instructions::exit_pool::handle(ctx)
+        handle_exit_pool(ctx)
     }
 }

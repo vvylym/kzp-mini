@@ -1,7 +1,7 @@
 //! Transaction submission and SOL funding on the test harness.
 
 use anchor_lang::solana_program::system_instruction;
-use kzp_mini::PoolError;
+use kzp_mini::error::PoolError;
 use solana_program_test::BanksClientError;
 use solana_sdk::{
     instruction::Instruction,

@@ -1,14 +1,14 @@
 //! Loan instruction commands.
 
-use anchor_lang::{system_program, InstructionData, ToAccountMetas};
+use anchor_lang::{InstructionData, ToAccountMetas, system_program};
 use anchor_spl::{associated_token::get_associated_token_address, token::ID as TOKEN_PROGRAM_ID};
 use anyhow::{Context, Result};
-use kzp_mini::{accounts, instruction, ID as PROGRAM_ID};
+use kzp_mini::{ID as PROGRAM_ID, accounts, instruction};
 use solana_sdk::{pubkey::Pubkey, signature::Signer};
 
 use crate::accounts::fetch_loan;
-use crate::commands::pool::{anchor_pubkey, fetch_mint};
 use crate::commands::CommandContext;
+use crate::commands::pool::{anchor_pubkey, fetch_mint};
 use crate::ix::to_sdk_instruction;
 use crate::pda::{loan_pda, member_pda, vault_pda};
 

@@ -1,8 +1,8 @@
-use crate::helpers::{initialized_pool, member_with_savings, TestApp, LAMPORTS};
-use anchor_spl::token::{spl_token, ID as TOKEN_PROGRAM_ID};
+use crate::helpers::{LAMPORTS, TestApp, initialized_pool, member_with_savings};
+use anchor_spl::token::{ID as TOKEN_PROGRAM_ID, spl_token};
+use kzp_mini::error::PoolError;
 use kzp_mini::state::LoanStatus;
 use kzp_mini::utils::pda::{member_pda, vault_pda};
-use kzp_mini::PoolError;
 use solana_sdk::{
     pubkey::Pubkey,
     signature::{Keypair, Signer},

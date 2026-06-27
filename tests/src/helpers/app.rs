@@ -1,9 +1,9 @@
 //! In-process test application: BPF program + SPL mint for `kzp-mini` integration tests.
 
 use anchor_lang::solana_program::system_instruction;
+use anchor_spl::token::ID as TOKEN_PROGRAM_ID;
 use anchor_spl::token::spl_token;
 use anchor_spl::token::spl_token::state::Mint as MintState;
-use anchor_spl::token::ID as TOKEN_PROGRAM_ID;
 use kzp_mini::ID as PROGRAM_ID;
 use solana_program_test::{ProgramTest, ProgramTestContext};
 use solana_sdk::{
@@ -23,7 +23,11 @@ impl TestApp {
     /// Deploys `kzp_mini.so` and initializes a 6-decimal test mint.
     pub async fn new() -> Self {
         let bpf_out = format!("{}/../target/deploy", env!("CARGO_MANIFEST_DIR"));
-        std::env::set_var("BPF_OUT_DIR", &bpf_out);
+        // Rust 2024 marks environment mutation unsafe; tests set this before
+        // spawning `ProgramTest` so the BPF loader can locate the built artifact.
+        unsafe {
+            std::env::set_var("BPF_OUT_DIR", &bpf_out);
+        }
 
         let mut program_test = ProgramTest::default();
         program_test.prefer_bpf(true);

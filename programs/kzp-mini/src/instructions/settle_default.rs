@@ -62,7 +62,7 @@ pub struct SettleDefault<'info> {
 }
 
 /// Admin marks a due active loan defaulted from reserved guarantor savings.
-pub fn handle(ctx: Context<SettleDefault>) -> Result<()> {
+pub fn handle_settle_default(ctx: Context<SettleDefault>) -> Result<()> {
     let loan = &mut ctx.accounts.loan;
     let now = Clock::get()?.unix_timestamp;
     require!(now >= loan.due_ts, PoolError::LoanNotDue);
