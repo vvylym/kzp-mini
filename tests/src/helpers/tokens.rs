@@ -2,9 +2,9 @@
 
 use anchor_spl::associated_token::get_associated_token_address;
 use anchor_spl::associated_token::spl_associated_token_account::instruction::create_associated_token_account_idempotent;
+use anchor_spl::token::ID as TOKEN_PROGRAM_ID;
 use anchor_spl::token::spl_token;
 use anchor_spl::token::spl_token::state::Account as TokenAccountState;
-use anchor_spl::token::ID as TOKEN_PROGRAM_ID;
 use solana_sdk::{
     program_pack::Pack,
     pubkey::Pubkey,
@@ -23,7 +23,7 @@ impl TestApp {
     pub async fn ensure_ata(&mut self, owner: &Keypair, fund_amount: u64) -> Pubkey {
         let ata = get_associated_token_address(&owner.pubkey(), &self.mint.pubkey());
         let create_ix = create_associated_token_account_idempotent(
-            &self.payer.pubkey(),
+            &self.context.payer.pubkey(),
             &owner.pubkey(),
             &self.mint.pubkey(),
             &TOKEN_PROGRAM_ID,
@@ -52,7 +52,13 @@ impl TestApp {
 
     /// Reads the SPL token balance of an ATA.
     pub async fn token_balance(&mut self, ata: &Pubkey) -> u64 {
-        let account = self.banks.get_account(*ata).await.unwrap().unwrap();
+        let account = self
+            .context
+            .banks_client
+            .get_account(*ata)
+            .await
+            .unwrap()
+            .unwrap();
         TokenAccountState::unpack(&account.data).unwrap().amount
     }
 

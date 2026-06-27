@@ -1,6 +1,6 @@
-use crate::helpers::{initialized_pool, TestApp};
+use crate::helpers::{TestApp, initialized_pool};
+use kzp_mini::error::PoolError;
 use kzp_mini::utils::pda::member_pda;
-use kzp_mini::PoolError;
 use solana_sdk::{pubkey::Pubkey, signature::Signer};
 
 /// Shared fixtures for [`deposit_savings`](kzp_mini::deposit_savings) integration tests.
@@ -43,6 +43,7 @@ with_universe!(deposit_savings_nominal, universe(500_000_000), |app, u| {
 
     assert_eq!(member.savings_balance, 200_000_000);
     assert_eq!(pool_state.total_savings, 200_000_000);
+    app.assert_vault_covers_liquid_savings(&u.pool).await;
 });
 
 // Spec: nominal - repeated deposits accumulate savings balance.

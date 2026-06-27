@@ -1,7 +1,7 @@
-use crate::helpers::{initialized_pool, member_with_savings, TestApp};
+use crate::helpers::{TestApp, initialized_pool, member_with_savings};
+use kzp_mini::error::PoolError;
 use kzp_mini::state::LoanStatus;
-use kzp_mini::utils::pda::loan_pda;
-use kzp_mini::PoolError;
+use kzp_mini::utils::pda::{loan_pda, member_pda};
 use solana_sdk::{
     pubkey::Pubkey,
     signature::{Keypair, Signer},
@@ -104,6 +104,10 @@ with_universe!(request_loan_nominal, |app, u| {
     assert!(!loan.guarantor_a_signed);
     assert!(!loan.guarantor_b_signed);
     assert_eq!(loan.status, LoanStatus::Pending);
+
+    let (borrower_member, _) = member_pda(&u.pool, &u.borrower.pubkey());
+    let member = app.fetch_member(&borrower_member).await;
+    assert_eq!(member.pending_loan, Some(loan_key));
 });
 
 // Spec: edge - borrower already has an active loan (`ExistingActiveLoan`).
@@ -143,6 +147,34 @@ with_universe!(
     }
 );
 
+// Spec: edge - borrower already has a pending loan (`ExistingPendingLoan`).
+//
+// Given:
+// - A borrower with a pending loan request
+//
+// When:
+// - The same borrower requests another loan with a different nonce
+//
+// Then:
+// - Transaction fails with `ExistingPendingLoan`
+with_universe!(
+    request_loan_fails_when_borrower_has_pending_loan,
+    |app, u| {
+        u.request(app, 3, 500_000_000).await;
+
+        let ix = app.request_loan(
+            &u.borrower,
+            u.pool,
+            4,
+            500_000_000,
+            u.guarantor_a.pubkey(),
+            u.guarantor_b.pubkey(),
+        );
+        app.process_expect_custom_err(&[ix], &[&u.borrower], PoolError::ExistingPendingLoan)
+            .await;
+    }
+);
+
 // Spec: edge - zero loan amount (`LoanAmountMustBePositive`).
 //
 // Given:
@@ -169,7 +201,7 @@ with_universe!(request_loan_fails_on_zero_amount, |app, u| {
 // Spec: edge - amount exceeds savings × max multiplier (`LoanExceedsMaxMultiplier`).
 //
 // Given:
-// - A borrower with 1B savings (max loan 2B at 2× multiplier)
+// - A borrower with 1B savings (max loan 3B at 3× multiplier)
 //
 // When:
 // - Borrower requests 4B
@@ -259,6 +291,38 @@ with_universe!(request_loan_fails_when_guarantor_not_member, |app, u| {
     );
     app.process_expect_err(&[ix], &[&u.borrower]).await;
 });
+
+// Spec: defensive - guarantor member PDA owner field must match nominated guarantor.
+//
+// Given:
+// - A valid guarantor member PDA whose stored owner field has drifted
+//
+// When:
+// - Borrower nominates that guarantor
+//
+// Then:
+// - Transaction fails with `GuarantorNotMember` before opening the loan
+with_universe!(
+    request_loan_fails_when_guarantor_member_owner_mismatches,
+    |app, u| {
+        let (guarantor_member, _) = member_pda(&u.pool, &u.guarantor_a.pubkey());
+        let mut guarantor_state = app.fetch_member(&guarantor_member).await;
+        guarantor_state.owner = Pubkey::new_unique();
+        app.overwrite_member(&guarantor_member, &guarantor_state)
+            .await;
+
+        let ix = app.request_loan(
+            &u.borrower,
+            u.pool,
+            42,
+            1_000_000_000,
+            u.guarantor_a.pubkey(),
+            u.guarantor_b.pubkey(),
+        );
+        app.process_expect_custom_err(&[ix], &[&u.borrower], PoolError::GuarantorNotMember)
+            .await;
+    }
+);
 
 // Spec: edge - guarantor already has an active loan (`GuarantorHasActiveLoan`).
 //

@@ -87,7 +87,28 @@ pub enum PoolError {
     /// Guarantor `savings_balance` is below their default settlement share.
     #[msg("Guarantor savings are insufficient to cover default share")]
     GuarantorInsufficientSavings,
-    /// Guarantor token ATA balance is below their default settlement share.
-    #[msg("Guarantor token balance is insufficient to cover default share")]
+    /// Reserved obsolete slot; default settlement no longer debits guarantor token ATAs.
+    #[msg("Reserved obsolete guarantor token balance error")]
     GuarantorInsufficientTokens,
+    /// Pool name exceeds [`crate::constants::MAX_POOL_NAME_LEN`].
+    #[msg("Pool name exceeds maximum supported length")]
+    PoolNameTooLong,
+    /// Borrower already has a pending loan request (`member.pending_loan` is set).
+    #[msg("You already have a pending loan")]
+    ExistingPendingLoan,
+    /// Loan term would produce an invalid due timestamp.
+    #[msg("Loan term must not be negative")]
+    InvalidLoanTerm,
+    /// Default settlement attempted before the loan due date.
+    #[msg("Loan is not due for default settlement")]
+    LoanNotDue,
+    /// Co-sign activation omitted required remaining accounts.
+    #[msg("Missing co-sign activation accounts")]
+    MissingActivationAccounts,
+    /// Repayment finalization omitted required remaining accounts.
+    #[msg("Missing repayment finalization accounts")]
+    MissingRepaymentFinalizationAccounts,
+    /// Remaining accounts do not match the expected loan-derived addresses.
+    #[msg("Remaining accounts do not match the expected loan accounts")]
+    InvalidRemainingAccounts,
 }

@@ -10,7 +10,7 @@ RPC="https://api.devnet.solana.com"
 EXPLORER="https://explorer.solana.com/tx"
 PROGRAM_KEYPAIR="$ROOT/keys/program.json"
 PROGRAM_ID="$(solana address -k "$PROGRAM_KEYPAIR")"
-POOL_NAME="SuperteamDemo"
+POOL_NAME="KZPDemo$(date +%s)"
 ENTRY_FEE=50
 DEPOSIT=1000000
 LOAN_AMOUNT=500000
@@ -127,6 +127,15 @@ OUT=$(kzp pool deposit --pool "$POOL" --amount "$DEPOSIT" 2>&1)
 echo "$OUT"
 TXS[deposit]=$(echo "$OUT" | extract_sig)
 
+echo "==> Guarantors deposit savings for backing"
+OUT=$(kzp --wallet "$GA_WALLET" pool deposit --pool "$POOL" --amount "$DEPOSIT" 2>&1)
+echo "$OUT"
+TXS[deposit_ga]=$(echo "$OUT" | extract_sig)
+
+OUT=$(kzp --wallet "$GB_WALLET" pool deposit --pool "$POOL" --amount "$DEPOSIT" 2>&1)
+echo "$OUT"
+TXS[deposit_gb]=$(echo "$OUT" | extract_sig)
+
 echo "==> Admin requests loan"
 OUT=$(kzp loan request --pool "$POOL" --nonce "$LOAN_NONCE" --amount "$LOAN_AMOUNT" \
   --guarantor-a "$GA_PK" --guarantor-b "$GB_PK" 2>&1)
@@ -171,7 +180,9 @@ print_tx "Initialize pool" "${TXS[init]}"
 print_tx "Admin join" "${TXS[join_admin]}"
 print_tx "Guarantor A join" "${TXS[join_ga]}"
 print_tx "Guarantor B join" "${TXS[join_gb]}"
-print_tx "Deposit savings" "${TXS[deposit]}"
+print_tx "Admin deposit savings" "${TXS[deposit]}"
+print_tx "Guarantor A deposit savings" "${TXS[deposit_ga]}"
+print_tx "Guarantor B deposit savings" "${TXS[deposit_gb]}"
 print_tx "Request loan" "${TXS[request]}"
 print_tx "Co-sign (guarantor A)" "${TXS[cosign_a]}"
 print_tx "Co-sign + disburse (guarantor B)" "${TXS[cosign_b]}"

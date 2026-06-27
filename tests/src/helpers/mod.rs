@@ -14,6 +14,7 @@
 //!
 //! PDA helpers: `kzp_mini::utils::pda`. Test setup macro: [`with_universe`].
 
+mod accounting;
 mod accounts;
 mod app;
 mod constants;

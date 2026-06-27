@@ -2,6 +2,8 @@
 
 Rust integration tests for `kzp-mini` using `solana-program-test`.
 
+The suite targets the Solana 4.x crate line from the workspace (`solana-program-test` 4.1.0). It loads the SBF program from `target/deploy/kzp_mini.so`, so run `NO_DNA=1 anchor build --ignore-keys` before the tests if that artifact is missing or stale.
+
 ## Layout
 
 Each `test_*.rs` file defines a documented `Universe` struct and `universe()` (or variant) that builds the shared fixture for that instruction. Every test uses regular `//` comments immediately above `with_universe!`:
@@ -16,16 +18,16 @@ Specification and use cases: [../docs/USE_CASES.md](../docs/USE_CASES.md).
 | File | Coverage |
 |------|----------|
 | `helpers/` | See `helpers/mod.rs` - split by responsibility (`app`, `transactions`, `tokens`, `accounts`, `instructions`, `fixtures`) |
-| `test_initialize_pool.rs` | Pool + vault creation, validation |
+| `test_initialize_pool.rs` | Pool + vault creation, name bounds, validation |
 | `test_join_pool.rs` | Entry fee, duplicate member, invalid vault |
 | `test_deposit_savings.rs` | Savings deposits, zero amount |
-| `test_request_loan.rs` | Loan limits, guarantor rules, nonce reuse |
-| `test_cosign_loan.rs` | Partial/full disbursement, co-sign errors |
-| `test_repay_loan.rs` | Partial/full repay, borrower checks |
-| `test_cancel_loan.rs` | Borrower cancels pending loan |
+| `test_request_loan.rs` | Loan limits, borrower reservation, guarantor rules, nonce reuse |
+| `test_cosign_loan.rs` | Partial/full disbursement, liability reservation, activation rechecks, co-sign errors |
+| `test_repay_loan.rs` | Partial/full repay, borrower checks, liability release |
+| `test_cancel_loan.rs` | Borrower cancels pending loan and clears reservations |
 | `test_withdraw_cosign.rs` | Guarantor revokes partial co-sign |
-| `test_settle_default.rs` | Admin default settlement, 50/50 guarantor split |
-| `test_exit_pool.rs` | Exit nominal, loan/guarantee blocks |
+| `test_settle_default.rs` | Permissionless due-date default settlement, reserved-liability split |
+| `test_exit_pool.rs` | Exit nominal, pending/active loan and guarantee blocks |
 
 ## `with_universe!`
 
@@ -57,12 +59,13 @@ with_universe!(request_loan_fails_when_guarantor_limit_reached, universe_guarant
 ```bash
 NO_DNA=1 anchor build --ignore-keys
 cargo llvm-cov nextest --workspace --all-targets --all-features
+# or: cargo test --workspace
 # or: anchor test   # runs `cargo nextest --workspace` per Anchor.toml
 ```
 
 BPF artifact path: `target/deploy/kzp_mini.so` (set via `BPF_OUT_DIR` in `TestApp`).
 
-Shared dependency versions live in the root [`Cargo.toml`](../Cargo.toml) `[workspace.dependencies]` (`anchor-lang`, `anchor-spl`, `solana-sdk`, …).
+Shared dependency versions live in the root [`Cargo.toml`](../Cargo.toml) `[workspace.dependencies]` (`anchor-lang`, `anchor-spl`, `solana-sdk`, `solana-program-test`, ...).
 
 ## Error assertions
 

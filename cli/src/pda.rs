@@ -1,7 +1,7 @@
 //! PDA derivation using `solana-sdk` types (compatible with the RPC client).
 
-use kzp_mini::utils::seeds::{LOAN_SEED, MEMBER_SEED, POOL_SEED, VAULT_SEED};
 use kzp_mini::ID;
+use kzp_mini::utils::seeds::{LOAN_SEED, MEMBER_SEED, POOL_SEED, VAULT_SEED};
 use solana_sdk::pubkey::Pubkey;
 
 fn program_id() -> Pubkey {

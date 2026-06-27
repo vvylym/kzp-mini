@@ -1,8 +1,8 @@
-use crate::helpers::{initialized_pool, member_with_savings, TestApp, LAMPORTS};
-use anchor_spl::token::{spl_token, ID as TOKEN_PROGRAM_ID};
+use crate::helpers::{LAMPORTS, TestApp, initialized_pool, member_with_savings};
+use anchor_spl::token::{ID as TOKEN_PROGRAM_ID, spl_token};
+use kzp_mini::error::PoolError;
 use kzp_mini::state::LoanStatus;
 use kzp_mini::utils::pda::{member_pda, vault_pda};
-use kzp_mini::PoolError;
 use solana_sdk::{
     pubkey::Pubkey,
     signature::{Keypair, Signer},
@@ -79,10 +79,11 @@ with_universe!(
             app.token_balance(&vault_pda(&u.pool).0).await,
             vault_before + repay
         );
+        app.assert_vault_covers_liquid_savings(&u.pool).await;
     }
 );
 
-// Spec: nominal - full repayment clears borrower loan and guarantor obligations.
+// Spec: nominal - full repayment clears borrower loan, guarantor obligations, and closes loan.
 //
 // Given:
 // - An active loan with outstanding balance after a prior partial repayment
@@ -91,7 +92,7 @@ with_universe!(
 // - Borrower repays the remaining outstanding amount
 //
 // Then:
-// - Loan status is `Repaid`, borrower `active_loan` is cleared, guarantors drop the guarantee
+// - Loan account is closed, borrower `active_loan` is cleared, guarantors drop the guarantee
 with_universe!(
     repay_loan_full_nominal,
     universe(2_000_000_000),
@@ -108,7 +109,6 @@ with_universe!(
             .await;
         app.process(&[ix], &[&u.borrower]).await;
 
-        let loan = app.fetch_loan(&u.loan).await;
         let (bob_member, _) = member_pda(&u.pool, &u.borrower.pubkey());
         let bob_member = app.fetch_member(&bob_member).await;
         let (carol_member, _) = member_pda(&u.pool, &u.guarantor_a.pubkey());
@@ -116,11 +116,13 @@ with_universe!(
         let carol_member = app.fetch_member(&carol_member).await;
         let dave_member = app.fetch_member(&dave_member).await;
 
-        assert_eq!(loan.outstanding, 0);
-        assert_eq!(loan.status, LoanStatus::Repaid);
+        assert!(!app.account_exists(&u.loan).await);
         assert!(bob_member.active_loan.is_none());
-        assert!(!carol_member.active_guarantees.contains(&u.loan));
-        assert!(!dave_member.active_guarantees.contains(&u.loan));
+        assert_eq!(carol_member.active_guarantee_count, 0);
+        assert_eq!(dave_member.active_guarantee_count, 0);
+        assert_eq!(carol_member.locked_savings, 0);
+        assert_eq!(dave_member.locked_savings, 0);
+        app.assert_vault_covers_liquid_savings(&u.pool).await;
     }
 );
 
@@ -173,18 +175,15 @@ with_universe!(
     }
 );
 
-// Spec: edge - loan already repaid; further repay rejected (`LoanNotActive`).
+// Spec: edge - fully repaid loans are closed.
 //
 // Given:
-// - A loan that has been fully repaid
-//
-// When:
-// - Borrower calls `repay_loan` again
+// - A loan is fully repaid
 //
 // Then:
-// - Transaction fails with `LoanNotActive`
+// - The terminal loan account no longer exists
 with_universe!(
-    repay_loan_fails_when_already_repaid,
+    repay_loan_closes_when_fully_repaid,
     universe(1_000_000_000),
     |app, u| {
         let ix_full = app
@@ -192,11 +191,33 @@ with_universe!(
             .await;
         app.process(&[ix_full], &[&u.borrower]).await;
 
+        assert!(!app.account_exists(&u.loan).await);
+    }
+);
+
+// Spec: edge - full repayment must include finalization accounts.
+//
+// Given:
+// - An active loan whose full outstanding balance is being repaid
+//
+// When:
+// - The borrower submits only the base partial-repayment account set
+//
+// Then:
+// - Transaction fails before token transfer with `MissingRepaymentFinalizationAccounts`
+with_universe!(
+    repay_loan_fails_when_finalization_accounts_missing,
+    universe(1_000_000_000),
+    |app, u| {
         let ix = app
-            .repay_loan(&u.borrower, u.loan, u.borrower_ata, 100_000_000)
+            .repay_loan_base_only(&u.borrower, u.loan, u.borrower_ata, u.amount)
             .await;
-        app.process_expect_custom_err(&[ix], &[&u.borrower], PoolError::LoanNotActive)
-            .await;
+        app.process_expect_custom_err(
+            &[ix],
+            &[&u.borrower],
+            PoolError::MissingRepaymentFinalizationAccounts,
+        )
+        .await;
     }
 );
 

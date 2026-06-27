@@ -3,6 +3,8 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
+use crate::constants::{MAX_POOL_NAME_LEN, MIN_POOL_NAME_LEN};
+use crate::error::PoolError;
 use crate::state::Pool;
 use crate::utils::seeds::{POOL_SEED, VAULT_SEED};
 
@@ -46,4 +48,52 @@ pub struct InitializePool<'info> {
 
     /// Rent sysvar for minimum balance calculations.
     pub rent: Sysvar<'info, Rent>,
+}
+
+/// Initializes pool and vault state after validating the pool name.
+pub fn handle_initialize_pool(
+    ctx: Context<InitializePool>,
+    pool_name: String,
+    required_entry_fee: u64,
+) -> Result<()> {
+    validate_pool_name(&pool_name)?;
+
+    let pool = &mut ctx.accounts.pool;
+    pool.admin = ctx.accounts.admin.key();
+    pool.token_mint = ctx.accounts.token_mint.key();
+    pool.vault = ctx.accounts.vault.key();
+    pool.required_entry_fee = required_entry_fee;
+    pool.total_members = 0;
+    pool.total_savings = 0;
+    pool.total_outstanding_loans = 0;
+    pool.bump = ctx.bumps.pool;
+    pool.vault_bump = ctx.bumps.vault;
+
+    Ok(())
+}
+
+fn validate_pool_name(pool_name: &str) -> std::result::Result<(), PoolError> {
+    if pool_name.len() < MIN_POOL_NAME_LEN {
+        return Err(PoolError::PoolNameTooShort);
+    }
+    if pool_name.len() > MAX_POOL_NAME_LEN {
+        return Err(PoolError::PoolNameTooLong);
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pool_name_validation_keeps_seed_bounds() {
+        assert!(validate_pool_name("ab").is_err());
+        assert!(validate_pool_name("abc").is_ok());
+        assert!(validate_pool_name(&"a".repeat(MAX_POOL_NAME_LEN)).is_ok());
+        assert_eq!(
+            validate_pool_name(&"a".repeat(MAX_POOL_NAME_LEN + 1)).unwrap_err(),
+            PoolError::PoolNameTooLong
+        );
+    }
 }

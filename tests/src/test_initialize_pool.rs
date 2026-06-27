@@ -1,6 +1,7 @@
-use crate::helpers::{funded_admin, TestApp, ENTRY_FEE, POOL_NAME};
+use crate::helpers::{ENTRY_FEE, POOL_NAME, TestApp, funded_admin};
+use kzp_mini::constants::MAX_POOL_NAME_LEN;
+use kzp_mini::error::PoolError;
 use kzp_mini::utils::pda::{pool_pda, vault_pda};
-use kzp_mini::PoolError;
 use solana_sdk::signature::{Keypair, Signer};
 
 /// Shared fixtures for [`initialize_pool`](kzp_mini::initialize_pool) integration tests.
@@ -43,6 +44,7 @@ with_universe!(initialize_pool_nominal, |app, u| {
     assert_eq!(pool_state.total_savings, 0);
     assert_eq!(pool_state.total_outstanding_loans, 0);
     assert_eq!(app.token_balance(&vault).await, 0);
+    app.assert_vault_covers_liquid_savings(&pool).await;
 });
 
 // Spec: edge - duplicate `initialize_pool` for same PDA fails (Anchor `init` constraint).
@@ -77,6 +79,29 @@ with_universe!(initialize_pool_fails_on_empty_name, |app, u| {
     let ix = app.initialize_pool(&u.admin, "", ENTRY_FEE);
     app.process_expect_custom_err(&[ix], &[&u.admin], PoolError::PoolNameTooShort)
         .await;
+});
+
+// Spec: boundary - pool name at the maximum seed-safe length succeeds.
+//
+// Given:
+// - A funded admin wallet
+//
+// When:
+// - Admin calls `initialize_pool` with a 32-byte pool name
+//
+// Then:
+// - Pool and vault PDAs initialize successfully
+with_universe!(initialize_pool_accepts_max_length_name, |app, u| {
+    let pool_name = "a".repeat(MAX_POOL_NAME_LEN);
+    let (pool, _) = pool_pda(&u.admin.pubkey(), &pool_name);
+    let (vault, _) = vault_pda(&pool);
+
+    let ix = app.initialize_pool(&u.admin, &pool_name, ENTRY_FEE);
+    app.process(&[ix], &[&u.admin]).await;
+
+    let pool_state = app.fetch_pool(&pool).await;
+    assert_eq!(pool_state.admin, u.admin.pubkey());
+    assert_eq!(pool_state.vault, vault);
 });
 
 // Spec: edge - token mint account is not a valid mint (Anchor mint constraint).

@@ -1,14 +1,14 @@
 //! Loan instruction commands.
 
-use anchor_lang::{system_program, InstructionData, ToAccountMetas};
+use anchor_lang::{InstructionData, ToAccountMetas, system_program};
 use anchor_spl::{associated_token::get_associated_token_address, token::ID as TOKEN_PROGRAM_ID};
 use anyhow::{Context, Result};
-use kzp_mini::{accounts, instruction, ID as PROGRAM_ID};
-use solana_sdk::{pubkey::Pubkey, signature::Signer};
+use kzp_mini::{ID as PROGRAM_ID, accounts, instruction};
+use solana_sdk::{instruction::AccountMeta, pubkey::Pubkey, signature::Signer};
 
 use crate::accounts::fetch_loan;
-use crate::commands::pool::{anchor_pubkey, fetch_mint};
 use crate::commands::CommandContext;
+use crate::commands::pool::{anchor_pubkey, fetch_mint};
 use crate::ix::to_sdk_instruction;
 use crate::pda::{loan_pda, member_pda, vault_pda};
 
@@ -25,6 +25,7 @@ pub fn request_loan(
     amount: u64,
     guarantor_a: &str,
     guarantor_b: &str,
+    term_seconds: i64,
 ) -> Result<()> {
     let pool = parse_pubkey("pool", pool_str)?;
     let borrower = ctx.client.payer();
@@ -54,6 +55,7 @@ pub fn request_loan(
         data: instruction::RequestLoan {
             loan_nonce: nonce,
             amount,
+            loan_term_seconds: term_seconds,
         }
         .data(),
     });
@@ -77,46 +79,58 @@ pub fn co_sign_loan(
     let loan = parse_pubkey("loan", loan_str)?;
     let loan_state = fetch_loan(&ctx.client, &loan)?;
     let pool = Pubkey::new_from_array(loan_state.pool.to_bytes());
-    let borrower = Pubkey::new_from_array(loan_state.borrower.to_bytes());
     let guarantor = ctx.client.payer();
+    let signer = guarantor.pubkey();
 
-    let mint = fetch_mint(ctx, pool)?;
-    let borrower_token_account = match borrower_ata {
-        Some(value) => parse_pubkey("borrower_ata", value)?,
-        None => Pubkey::new_from_array(
-            get_associated_token_address(&anchor_pubkey(borrower), &anchor_pubkey(mint)).to_bytes(),
-        ),
-    };
-
-    let guarantor_a = Pubkey::new_from_array(loan_state.guarantor_a.to_bytes());
-    let guarantor_b = Pubkey::new_from_array(loan_state.guarantor_b.to_bytes());
-    let (guarantor_a_member, _) = member_pda(&pool, &guarantor_a);
-    let (guarantor_b_member, _) = member_pda(&pool, &guarantor_b);
-    let (borrower_member, _) = member_pda(&pool, &borrower);
-    let (vault, _) = vault_pda(&pool);
+    let (guarantor_member, _) = member_pda(&pool, &signer);
 
     let accounts = accounts::CoSignLoan {
-        guarantor: anchor_pubkey(guarantor.pubkey()),
+        guarantor: anchor_pubkey(signer),
         loan: anchor_pubkey(loan),
-        pool: anchor_pubkey(pool),
-        guarantor_a_member: anchor_pubkey(guarantor_a_member),
-        guarantor_b_member: anchor_pubkey(guarantor_b_member),
-        vault: anchor_pubkey(vault),
-        borrower_member: anchor_pubkey(borrower_member),
-        borrower_token_account: anchor_pubkey(borrower_token_account),
-        token_program: TOKEN_PROGRAM_ID,
+        guarantor_member: anchor_pubkey(guarantor_member),
     };
 
-    let ix = to_sdk_instruction(anchor_lang::solana_program::instruction::Instruction {
+    let mut ix = to_sdk_instruction(anchor_lang::solana_program::instruction::Instruction {
         program_id: PROGRAM_ID,
         accounts: accounts.to_account_metas(None),
         data: instruction::CoSignLoan {}.data(),
     });
+    let guarantor_a = Pubkey::new_from_array(loan_state.guarantor_a.to_bytes());
+    let guarantor_b = Pubkey::new_from_array(loan_state.guarantor_b.to_bytes());
+    let completes_activation = (signer == guarantor_a && loan_state.guarantor_b_signed)
+        || (signer == guarantor_b && loan_state.guarantor_a_signed);
+    if completes_activation {
+        let borrower = Pubkey::new_from_array(loan_state.borrower.to_bytes());
+        let mint = fetch_mint(ctx, pool)?;
+        let borrower_token_account = match borrower_ata {
+            Some(value) => parse_pubkey("borrower_ata", value)?,
+            None => Pubkey::new_from_array(
+                get_associated_token_address(&anchor_pubkey(borrower), &anchor_pubkey(mint))
+                    .to_bytes(),
+            ),
+        };
+        let other_guarantor = if signer == guarantor_a {
+            guarantor_b
+        } else {
+            guarantor_a
+        };
+        let (other_guarantor_member, _) = member_pda(&pool, &other_guarantor);
+        let (borrower_member, _) = member_pda(&pool, &borrower);
+        let (vault, _) = vault_pda(&pool);
+        ix.accounts.extend([
+            AccountMeta::new(pool, false),
+            AccountMeta::new(other_guarantor_member, false),
+            AccountMeta::new(borrower_member, false),
+            AccountMeta::new(vault, false),
+            AccountMeta::new(borrower_token_account, false),
+            AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
+        ]);
+    }
 
     let sig = ctx
         .client
         .send_instructions(&[ix], &[guarantor], ctx.dry_run)?;
-    println!("Co-signed loan {loan} (pool {pool}, borrower {borrower})");
+    println!("Co-signed loan {loan} (pool {pool})");
     if !ctx.dry_run {
         println!("Signature: {sig}");
     }
@@ -137,28 +151,32 @@ pub fn repay_loan(ctx: &CommandContext, loan_str: &str, amount: u64) -> Result<(
         get_associated_token_address(&anchor_pubkey(borrower.pubkey()), &anchor_pubkey(mint))
             .to_bytes(),
     );
-    let (borrower_member, _) = member_pda(&pool, &borrower.pubkey());
     let (vault, _) = vault_pda(&pool);
-    let (guarantor_a_member, _) = member_pda(&pool, &guarantor_a);
-    let (guarantor_b_member, _) = member_pda(&pool, &guarantor_b);
 
     let accounts = accounts::RepayLoan {
         borrower: anchor_pubkey(borrower.pubkey()),
         loan: anchor_pubkey(loan),
         pool: anchor_pubkey(pool),
-        borrower_member: anchor_pubkey(borrower_member),
         vault: anchor_pubkey(vault),
         borrower_token_account: anchor_pubkey(borrower_ata),
-        guarantor_a_member: anchor_pubkey(guarantor_a_member),
-        guarantor_b_member: anchor_pubkey(guarantor_b_member),
         token_program: TOKEN_PROGRAM_ID,
     };
 
-    let ix = to_sdk_instruction(anchor_lang::solana_program::instruction::Instruction {
+    let mut ix = to_sdk_instruction(anchor_lang::solana_program::instruction::Instruction {
         program_id: PROGRAM_ID,
         accounts: accounts.to_account_metas(None),
         data: instruction::RepayLoan { amount }.data(),
     });
+    if amount == loan_state.outstanding {
+        let (borrower_member, _) = member_pda(&pool, &borrower.pubkey());
+        let (guarantor_a_member, _) = member_pda(&pool, &guarantor_a);
+        let (guarantor_b_member, _) = member_pda(&pool, &guarantor_b);
+        ix.accounts.extend([
+            AccountMeta::new(borrower_member, false),
+            AccountMeta::new(guarantor_a_member, false),
+            AccountMeta::new(guarantor_b_member, false),
+        ]);
+    }
 
     let sig = ctx
         .client
@@ -178,12 +196,14 @@ pub fn cancel_loan(ctx: &CommandContext, loan_str: &str) -> Result<()> {
     let borrower = ctx.client.payer();
     let guarantor_a = Pubkey::new_from_array(loan_state.guarantor_a.to_bytes());
     let guarantor_b = Pubkey::new_from_array(loan_state.guarantor_b.to_bytes());
+    let (borrower_member, _) = member_pda(&pool, &borrower.pubkey());
     let (guarantor_a_member, _) = member_pda(&pool, &guarantor_a);
     let (guarantor_b_member, _) = member_pda(&pool, &guarantor_b);
 
     let accounts = accounts::CancelLoan {
         borrower: anchor_pubkey(borrower.pubkey()),
         loan: anchor_pubkey(loan),
+        borrower_member: anchor_pubkey(borrower_member),
         guarantor_a_member: anchor_pubkey(guarantor_a_member),
         guarantor_b_member: anchor_pubkey(guarantor_b_member),
     };
@@ -238,17 +258,11 @@ pub fn withdraw_cosign(ctx: &CommandContext, loan_str: &str) -> Result<()> {
     Ok(())
 }
 
-/// Admin settles an active loan as defaulted (50/50 from guarantor savings ledger + SPL to vault).
-pub fn settle_default(
-    ctx: &CommandContext,
-    loan_str: &str,
-    pool_str: &str,
-    guarantor_a_wallet: &str,
-    guarantor_b_wallet: &str,
-) -> Result<()> {
+/// Permissionlessly settles an active loan as defaulted from reserved guarantor savings.
+pub fn settle_default(ctx: &CommandContext, loan_str: &str, pool_str: &str) -> Result<()> {
     let loan = parse_pubkey("loan", loan_str)?;
     let pool = parse_pubkey("pool", pool_str)?;
-    let admin = ctx.client.payer();
+    let crank = ctx.client.payer();
     let loan_state = fetch_loan(&ctx.client, &loan)?;
     let borrower = Pubkey::new_from_array(loan_state.borrower.to_bytes());
     let guarantor_a = Pubkey::new_from_array(loan_state.guarantor_a.to_bytes());
@@ -256,34 +270,15 @@ pub fn settle_default(
     let (borrower_member, _) = member_pda(&pool, &borrower);
     let (guarantor_a_member, _) = member_pda(&pool, &guarantor_a);
     let (guarantor_b_member, _) = member_pda(&pool, &guarantor_b);
-    let (vault, _) = vault_pda(&pool);
-
-    let mint = fetch_mint(ctx, pool)?;
-    let guarantor_a_token = Pubkey::new_from_array(
-        get_associated_token_address(&anchor_pubkey(guarantor_a), &anchor_pubkey(mint)).to_bytes(),
-    );
-    let guarantor_b_token = Pubkey::new_from_array(
-        get_associated_token_address(&anchor_pubkey(guarantor_b), &anchor_pubkey(mint)).to_bytes(),
-    );
-
-    let guarantor_a_keypair = solana_sdk::signature::read_keypair_file(guarantor_a_wallet)
-        .map_err(|e| anyhow::anyhow!("failed to read guarantor_a wallet: {e}"))?;
-    let guarantor_b_keypair = solana_sdk::signature::read_keypair_file(guarantor_b_wallet)
-        .map_err(|e| anyhow::anyhow!("failed to read guarantor_b wallet: {e}"))?;
 
     let accounts = accounts::SettleDefault {
-        admin: anchor_pubkey(admin.pubkey()),
+        crank: anchor_pubkey(crank.pubkey()),
         pool: anchor_pubkey(pool),
         loan: anchor_pubkey(loan),
+        borrower: anchor_pubkey(borrower),
         borrower_member: anchor_pubkey(borrower_member),
-        guarantor_a: anchor_pubkey(guarantor_a),
-        guarantor_b: anchor_pubkey(guarantor_b),
         guarantor_a_member: anchor_pubkey(guarantor_a_member),
         guarantor_b_member: anchor_pubkey(guarantor_b_member),
-        vault: anchor_pubkey(vault),
-        guarantor_a_token: anchor_pubkey(guarantor_a_token),
-        guarantor_b_token: anchor_pubkey(guarantor_b_token),
-        token_program: TOKEN_PROGRAM_ID,
     };
 
     let ix = to_sdk_instruction(anchor_lang::solana_program::instruction::Instruction {
@@ -292,11 +287,7 @@ pub fn settle_default(
         data: instruction::SettleDefault {}.data(),
     });
 
-    let sig = ctx.client.send_instructions(
-        &[ix],
-        &[&guarantor_a_keypair, &guarantor_b_keypair],
-        ctx.dry_run,
-    )?;
+    let sig = ctx.client.send_instructions(&[ix], &[crank], ctx.dry_run)?;
     println!("Settled default on loan {loan}");
     if !ctx.dry_run {
         println!("Signature: {sig}");

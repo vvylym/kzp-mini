@@ -1,10 +1,10 @@
 //! Instruction builders mirroring the on-chain `kzp-mini` account layouts.
 
-use anchor_lang::{system_program, InstructionData, ToAccountMetas};
+use anchor_lang::{InstructionData, ToAccountMetas, system_program};
 use anchor_spl::token::ID as TOKEN_PROGRAM_ID;
-use kzp_mini::{accounts, instruction, ID as PROGRAM_ID};
+use kzp_mini::{ID as PROGRAM_ID, accounts, instruction};
 use solana_sdk::{
-    instruction::Instruction,
+    instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
     signature::{Keypair, Signer},
 };
@@ -12,6 +12,7 @@ use solana_sdk::{
 use kzp_mini::utils::pda::{loan_pda, member_pda, pool_pda, vault_pda};
 
 use super::app::TestApp;
+use super::constants::DEFAULT_LOAN_TERM_SECONDS;
 
 impl TestApp {
     pub fn initialize_pool(
@@ -102,6 +103,28 @@ impl TestApp {
         guarantor_a: Pubkey,
         guarantor_b: Pubkey,
     ) -> Instruction {
+        self.request_loan_with_term(
+            borrower,
+            pool,
+            loan_nonce,
+            amount,
+            guarantor_a,
+            guarantor_b,
+            DEFAULT_LOAN_TERM_SECONDS,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn request_loan_with_term(
+        &self,
+        borrower: &Keypair,
+        pool: Pubkey,
+        loan_nonce: u64,
+        amount: u64,
+        guarantor_a: Pubkey,
+        guarantor_b: Pubkey,
+        loan_term_seconds: i64,
+    ) -> Instruction {
         let (member_account, _) = member_pda(&pool, &borrower.pubkey());
         let (loan, _) = loan_pda(&pool, &borrower.pubkey(), loan_nonce);
         let (guarantor_a_member, _) = member_pda(&pool, &guarantor_a);
@@ -120,7 +143,12 @@ impl TestApp {
         Instruction {
             program_id: PROGRAM_ID,
             accounts: accounts.to_account_metas(None),
-            data: instruction::RequestLoan { loan_nonce, amount }.data(),
+            data: instruction::RequestLoan {
+                loan_nonce,
+                amount,
+                loan_term_seconds,
+            }
+            .data(),
         }
     }
 
@@ -133,21 +161,53 @@ impl TestApp {
     ) -> Instruction {
         let loan_state = self.fetch_loan(&loan).await;
         let pool = loan_state.pool;
-        let borrower = loan_state.borrower;
-        let (guarantor_a_member, _) = member_pda(&pool, &loan_state.guarantor_a);
-        let (guarantor_b_member, _) = member_pda(&pool, &loan_state.guarantor_b);
-        let (borrower_member, _) = member_pda(&pool, &borrower);
-        let (vault, _) = vault_pda(&pool);
+        let signer = guarantor.pubkey();
+        let (guarantor_member, _) = member_pda(&pool, &signer);
+        let completes_activation = (signer == loan_state.guarantor_a
+            && loan_state.guarantor_b_signed)
+            || (signer == loan_state.guarantor_b && loan_state.guarantor_a_signed);
+        let accounts = accounts::CoSignLoan {
+            guarantor: signer,
+            loan,
+            guarantor_member,
+        };
+        let mut metas = accounts.to_account_metas(None);
+        if completes_activation {
+            let other_guarantor = if signer == loan_state.guarantor_a {
+                loan_state.guarantor_b
+            } else {
+                loan_state.guarantor_a
+            };
+            let (other_guarantor_member, _) = member_pda(&pool, &other_guarantor);
+            let (borrower_member, _) = member_pda(&pool, &loan_state.borrower);
+            let (vault, _) = vault_pda(&pool);
+            metas.extend([
+                AccountMeta::new(pool, false),
+                AccountMeta::new(other_guarantor_member, false),
+                AccountMeta::new(borrower_member, false),
+                AccountMeta::new(vault, false),
+                AccountMeta::new(borrower_ata, false),
+                AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
+            ]);
+        }
+        Instruction {
+            program_id: PROGRAM_ID,
+            accounts: metas,
+            data: instruction::CoSignLoan {}.data(),
+        }
+    }
+
+    pub async fn co_sign_loan_base_only(
+        &mut self,
+        guarantor: &Keypair,
+        loan: Pubkey,
+    ) -> Instruction {
+        let loan_state = self.fetch_loan(&loan).await;
+        let (guarantor_member, _) = member_pda(&loan_state.pool, &guarantor.pubkey());
         let accounts = accounts::CoSignLoan {
             guarantor: guarantor.pubkey(),
             loan,
-            pool,
-            guarantor_a_member,
-            guarantor_b_member,
-            vault,
-            borrower_member,
-            borrower_token_account: borrower_ata,
-            token_program: TOKEN_PROGRAM_ID,
+            guarantor_member,
         };
         Instruction {
             program_id: PROGRAM_ID,
@@ -166,19 +226,49 @@ impl TestApp {
     ) -> Instruction {
         let loan_state = self.fetch_loan(&loan).await;
         let pool = loan_state.pool;
-        let (borrower_member, _) = member_pda(&pool, &borrower.pubkey());
         let (vault, _) = vault_pda(&pool);
-        let (guarantor_a_member, _) = member_pda(&pool, &loan_state.guarantor_a);
-        let (guarantor_b_member, _) = member_pda(&pool, &loan_state.guarantor_b);
         let accounts = accounts::RepayLoan {
             borrower: borrower.pubkey(),
             loan,
             pool,
-            borrower_member,
             vault,
             borrower_token_account: borrower_ata,
-            guarantor_a_member,
-            guarantor_b_member,
+            token_program: TOKEN_PROGRAM_ID,
+        };
+        let mut metas = accounts.to_account_metas(None);
+        if amount == loan_state.outstanding {
+            let (borrower_member, _) = member_pda(&pool, &borrower.pubkey());
+            let (guarantor_a_member, _) = member_pda(&pool, &loan_state.guarantor_a);
+            let (guarantor_b_member, _) = member_pda(&pool, &loan_state.guarantor_b);
+            metas.extend([
+                AccountMeta::new(borrower_member, false),
+                AccountMeta::new(guarantor_a_member, false),
+                AccountMeta::new(guarantor_b_member, false),
+            ]);
+        }
+        Instruction {
+            program_id: PROGRAM_ID,
+            accounts: metas,
+            data: instruction::RepayLoan { amount }.data(),
+        }
+    }
+
+    pub async fn repay_loan_base_only(
+        &mut self,
+        borrower: &Keypair,
+        loan: Pubkey,
+        borrower_ata: Pubkey,
+        amount: u64,
+    ) -> Instruction {
+        let loan_state = self.fetch_loan(&loan).await;
+        let pool = loan_state.pool;
+        let (vault, _) = vault_pda(&pool);
+        let accounts = accounts::RepayLoan {
+            borrower: borrower.pubkey(),
+            loan,
+            pool,
+            vault,
+            borrower_token_account: borrower_ata,
             token_program: TOKEN_PROGRAM_ID,
         };
         Instruction {
@@ -209,11 +299,13 @@ impl TestApp {
     pub async fn cancel_loan(&mut self, borrower: &Keypair, loan: Pubkey) -> Instruction {
         let loan_state = self.fetch_loan(&loan).await;
         let pool = loan_state.pool;
+        let (borrower_member, _) = member_pda(&pool, &borrower.pubkey());
         let (guarantor_a_member, _) = member_pda(&pool, &loan_state.guarantor_a);
         let (guarantor_b_member, _) = member_pda(&pool, &loan_state.guarantor_b);
         let accounts = accounts::CancelLoan {
             borrower: borrower.pubkey(),
             loan,
+            borrower_member,
             guarantor_a_member,
             guarantor_b_member,
         };
@@ -242,32 +334,20 @@ impl TestApp {
         }
     }
 
-    pub async fn settle_default(
-        &mut self,
-        admin: &Keypair,
-        loan: Pubkey,
-        guarantor_a_ata: Pubkey,
-        guarantor_b_ata: Pubkey,
-    ) -> Instruction {
+    pub async fn settle_default(&mut self, crank: &Keypair, loan: Pubkey) -> Instruction {
         let loan_state = self.fetch_loan(&loan).await;
         let pool = loan_state.pool;
         let (borrower_member, _) = member_pda(&pool, &loan_state.borrower);
         let (guarantor_a_member, _) = member_pda(&pool, &loan_state.guarantor_a);
         let (guarantor_b_member, _) = member_pda(&pool, &loan_state.guarantor_b);
-        let (vault, _) = vault_pda(&pool);
         let accounts = accounts::SettleDefault {
-            admin: admin.pubkey(),
+            crank: crank.pubkey(),
             pool,
             loan,
+            borrower: loan_state.borrower,
             borrower_member,
-            guarantor_a: loan_state.guarantor_a,
-            guarantor_b: loan_state.guarantor_b,
             guarantor_a_member,
             guarantor_b_member,
-            vault,
-            guarantor_a_token: guarantor_a_ata,
-            guarantor_b_token: guarantor_b_ata,
-            token_program: TOKEN_PROGRAM_ID,
         };
         Instruction {
             program_id: PROGRAM_ID,

@@ -2,57 +2,61 @@
 
 use std::result::Result;
 
-use anchor_lang::prelude::Pubkey;
-
 use crate::error::PoolError;
 use crate::state::Member;
 
 /// Records a pending co-sign obligation before disbursement.
-///
-/// # Arguments
-///
-/// * `member` - Guarantor member account to update.
-/// * `loan_key` - Pending loan PDA pubkey.
-pub fn push_pending_guarantee(member: &mut Member, loan_key: Pubkey) -> Result<(), PoolError> {
-    if member.pending_guarantees.contains(&loan_key) {
-        return Ok(());
-    }
-    let total = member.active_guarantees.len() + member.pending_guarantees.len();
+pub fn push_pending_guarantee(member: &mut Member) -> Result<(), PoolError> {
+    let total =
+        usize::from(member.active_guarantee_count) + usize::from(member.pending_guarantee_count);
     if total >= Member::MAX_GUARANTEES {
         return Err(PoolError::GuarantorLimitReached);
     }
-    member.pending_guarantees.push(loan_key);
+    member.pending_guarantee_count = member
+        .pending_guarantee_count
+        .checked_add(1)
+        .ok_or(PoolError::GuarantorLimitReached)?;
     Ok(())
 }
 
-/// Records an active guarantee on a disbursed loan, enforcing the per-member cap.
-///
-/// # Arguments
-///
-/// * `member` - Guarantor member account to update.
-/// * `loan_key` - Disbursed loan PDA pubkey.
-pub fn push_active_guarantee(member: &mut Member, loan_key: Pubkey) -> Result<(), PoolError> {
-    if member.active_guarantees.len() >= Member::MAX_GUARANTEES {
-        return Err(PoolError::GuarantorLimitReached);
-    }
-    member.active_guarantees.push(loan_key);
+/// Releases a previously reserved guarantor savings amount.
+fn release_savings(member: &mut Member, amount: u64) -> Result<(), PoolError> {
+    member.locked_savings = member
+        .locked_savings
+        .checked_sub(amount)
+        .ok_or(PoolError::GuarantorInsufficientSavings)?;
     Ok(())
 }
 
-/// Removes a loan from pending and active guarantee lists.
-///
-/// # Arguments
-///
-/// * `member` - Guarantor member account to update.
-/// * `loan_key` - Loan PDA to remove from both guarantee vectors.
-pub fn clear_guarantee_refs(member: &mut Member, loan_key: &Pubkey) {
-    member.pending_guarantees.retain(|g| g != loan_key);
-    member.active_guarantees.retain(|g| g != loan_key);
+/// Removes one pending co-sign obligation.
+pub fn clear_pending_guarantee(member: &mut Member) -> Result<(), PoolError> {
+    member.pending_guarantee_count = member
+        .pending_guarantee_count
+        .checked_sub(1)
+        .ok_or(PoolError::PendingGuaranteesExist)?;
+    Ok(())
+}
+
+/// Removes one active guarantee obligation.
+fn clear_active_guarantee(member: &mut Member) -> Result<(), PoolError> {
+    member.active_guarantee_count = member
+        .active_guarantee_count
+        .checked_sub(1)
+        .ok_or(PoolError::ActiveGuaranteesExist)?;
+    Ok(())
+}
+
+/// Releases reserved savings and clears an active guarantee reference.
+pub fn release_active_guarantee(member: &mut Member, locked_amount: u64) -> Result<(), PoolError> {
+    release_savings(member, locked_amount)?;
+    clear_active_guarantee(member)?;
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use anchor_lang::prelude::Pubkey;
 
     fn empty_member() -> Member {
         Member {
@@ -61,29 +65,21 @@ mod tests {
             owner: Pubkey::new_unique(),
             entry_fee_paid: 0,
             savings_balance: 0,
+            locked_savings: 0,
             active_loan: None,
-            active_guarantees: Vec::new(),
-            pending_guarantees: Vec::new(),
+            pending_loan: None,
+            active_guarantee_count: 0,
+            pending_guarantee_count: 0,
             bump: 0,
         }
     }
 
     #[test]
-    fn rejects_active_when_at_capacity() {
-        let mut member = empty_member();
-        member.active_guarantees = vec![Pubkey::new_unique(); Member::MAX_GUARANTEES];
-        assert_eq!(
-            push_active_guarantee(&mut member, Pubkey::new_unique()).unwrap_err(),
-            PoolError::GuarantorLimitReached
-        );
-    }
-
-    #[test]
     fn rejects_pending_when_at_capacity() {
         let mut member = empty_member();
-        member.pending_guarantees = vec![Pubkey::new_unique(); Member::MAX_GUARANTEES];
+        member.pending_guarantee_count = Member::MAX_GUARANTEES as u8;
         assert_eq!(
-            push_pending_guarantee(&mut member, Pubkey::new_unique()).unwrap_err(),
+            push_pending_guarantee(&mut member).unwrap_err(),
             PoolError::GuarantorLimitReached
         );
     }
@@ -91,22 +87,38 @@ mod tests {
     #[test]
     fn rejects_pending_when_active_plus_pending_at_capacity() {
         let mut member = empty_member();
-        member.active_guarantees = vec![Pubkey::new_unique(); Member::MAX_GUARANTEES - 1];
-        member.pending_guarantees = vec![Pubkey::new_unique()];
+        member.active_guarantee_count = (Member::MAX_GUARANTEES - 1) as u8;
+        member.pending_guarantee_count = 1;
         assert_eq!(
-            push_pending_guarantee(&mut member, Pubkey::new_unique()).unwrap_err(),
+            push_pending_guarantee(&mut member).unwrap_err(),
             PoolError::GuarantorLimitReached
         );
     }
 
     #[test]
-    fn test_clear_guarantee_refs() {
-        let loan = Pubkey::new_unique();
+    fn clears_pending_and_active_counts_separately() {
         let mut member = empty_member();
-        member.pending_guarantees.push(loan);
-        member.active_guarantees.push(loan);
-        clear_guarantee_refs(&mut member, &loan);
-        assert!(member.pending_guarantees.is_empty());
-        assert!(member.active_guarantees.is_empty());
+        member.pending_guarantee_count = 1;
+        member.active_guarantee_count = 1;
+
+        clear_pending_guarantee(&mut member).unwrap();
+        assert_eq!(member.pending_guarantee_count, 0);
+        assert_eq!(member.active_guarantee_count, 1);
+
+        clear_active_guarantee(&mut member).unwrap();
+        assert_eq!(member.active_guarantee_count, 0);
+    }
+
+    #[test]
+    fn release_active_guarantee_releases_savings_and_reference() {
+        let mut member = empty_member();
+        member.savings_balance = 1_000;
+        member.locked_savings = 500;
+        member.active_guarantee_count = 1;
+
+        release_active_guarantee(&mut member, 500).unwrap();
+
+        assert_eq!(member.locked_savings, 0);
+        assert_eq!(member.active_guarantee_count, 0);
     }
 }

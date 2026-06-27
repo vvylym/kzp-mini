@@ -20,22 +20,32 @@ KZP Mini tracks two parallel views of pool money: the **SPL vault** (actual toke
 - Credited to the vault but **not** to `member.savings_balance`.
 - Leaves a small **liquidity buffer** for disburse → repay → exit cycles.
 
+## Core invariant
+
+The vault must always cover the liquid savings ledger:
+
+```text
+vault.amount >= pool.total_savings - pool.total_outstanding_loans
+```
+
+Any excess is expected and represents entry-fee buffer or other vault surplus not credited to member savings.
+
 ## Loan limits
 
 - Maximum principal: **3×** borrower `savings_balance` (`MAX_LOAN_MULTIPLIER`).
-- One **active loan** per borrower.
+- One **unresolved loan** per borrower (`pending_loan` or `active_loan`).
 - Up to **5** concurrent guarantees per guarantor (active + pending combined).
 
 ## Guarantee liability
 
-- While **Pending:** guarantor obligations live in `pending_guarantees`; either party can unwind via `cancel_loan` / `withdraw_cosign`.
-- After disbursement:** obligations move to `active_guarantees`; guarantors cannot exit until cleared.
+- While **Pending:** guarantor obligations increment `pending_guarantee_count`; either party can unwind via `cancel_loan` / `withdraw_cosign`.
+- After **disbursement:** obligations move to `active_guarantee_count`; per-loan backing is stored on the `Loan`, the member summary is stored in `locked_savings`, and guarantors cannot exit until cleared.
 
 ## Default settlement
 
-- Admin calls `settle_default` on an **Active** loan.
+- Any signer calls `settle_default` on a due **Active** loan.
 - Outstanding principal split **50/50** between guarantors (`div_ceil` on odd amounts).
-- Each guarantor debited on the savings **ledger** and must sign SPL transfer to the vault.
+- Each guarantor is debited on the savings **ledger** from already-reserved liability; no fresh guarantor signature or SPL transfer is required.
 
 ## Fail-closed checks
 

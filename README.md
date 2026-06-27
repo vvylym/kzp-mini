@@ -21,8 +21,9 @@ The protocol enforces financial mechanics on-chain while allowing membership pol
 | Property | Value |
 |----------|-------|
 | Blockchain | Solana (devnet deployed) |
-| Language | Rust 1.89 |
-| Framework | Anchor 1.0.2 |
+| Language | Rust stable for host builds |
+| Framework | Anchor crates 1.1.2 |
+| Solana crates | `solana-client` 4.1.0 · `solana-program-test` 4.1.0 · `solana-sdk` 4.0.1 |
 | Loan model | Two guarantors, 3× savings cap |
 | Savings model | Shared SPL vault + ledger |
 | Client | `kzp` CLI |
@@ -48,9 +49,9 @@ KZP Mini replaces **administrative coordination** with **on-chain enforcement**.
 |---------------------|-------------------------|
 | Pool / cash box | **Pool** + **Vault** PDAs |
 | Member record | **Member** PDA |
-| Loan | **Loan** PDA (`Pending` → `Active` → `Repaid` / `Defaulted`) |
+| Loan | **Loan** PDA (`Pending` → `Active` → closed on repay/default) |
 | Two guarantors | Both must co-sign before disbursement |
-| Default | Admin `settle_default`; 50/50 guarantor liability |
+| Default | Permissionless `settle_default` after due date; 50/50 reserved guarantor liability |
 
 Deeper domain and mapping: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
@@ -73,14 +74,14 @@ Deeper domain and mapping: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 ### Risk controls
 
 - Loan cap at 3× member savings
-- One active loan per borrower
+- One unresolved loan per borrower
 - Up to five guarantees per member
 - Exit blocked while borrowing or guaranteeing
 
 ### Administration
 
 - Pool initialization and SPL mint binding
-- Default settlement with guarantor SPL recovery
+- Permissionless due-date default settlement from reserved guarantor savings liability
 
 ---
 
@@ -88,33 +89,37 @@ Deeper domain and mapping: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 **Program ID:** `GsjUnBFvYtcxNwCrydPUjQTngGTqdx5v7APnWahnqwkx`
 
-### Verified lifecycle
+The same program ID is preserved across releases. The original bounty submission remains available as [`release/0.1.0`](https://github.com/vvylym/kzp-mini/tree/release/0.1.0) and [`v0.1.0`](https://github.com/vvylym/kzp-mini/releases/tag/v0.1.0). The current hardened revision is [`release/0.2.0`](https://github.com/vvylym/kzp-mini/tree/release/0.2.0) / [`v0.2.0`](https://github.com/vvylym/kzp-mini/releases/tag/v0.2.0).
 
-- [x] Deploy program
+### 0.2.0 verified lifecycle
+
+- [x] Upgrade program in place
 - [x] Initialize pool
 - [x] Join members (admin + two guarantors)
-- [x] Deposit savings
+- [x] Deposit borrower savings and guarantor backing
 - [x] Request loan
 - [x] Co-sign (guarantor A, then B)
 - [x] Disburse principal
-- [x] Repay loan
+- [x] Repay loan and close terminal loan account
 - [x] Exit pool
 
 | Step | Transaction |
 |------|-------------|
-| Program deploy | [explorer](https://explorer.solana.com/tx/2yxGQoDawUuxBkDHZ9ujbEDfDHxEwUa7y984oPLZvUyoYBQyzmcdvYSsdeCCFGhANXxLoKdSCukJ53Y9dVonPrrF?cluster=devnet) |
-| Initialize pool | [explorer](https://explorer.solana.com/tx/5PZoFBeMyAcghwxe4BsZ8JTb46Vc1THNCkH8KnPtyENuUfp3qncXUmoGf1NNhATzYxQ3BRJaoAENdkb645vUUfEr?cluster=devnet) |
-| Admin join | [explorer](https://explorer.solana.com/tx/4rLcE1oqSymJrWNXPf9GHdBJieun7s6GvHcJ8xf1zUaUXibGcMihnSq7VDqrUQ2EBrq27TFA7sMSnSu5CmhnTkes?cluster=devnet) |
-| Guarantor A join | [explorer](https://explorer.solana.com/tx/37kNGnfavU2CjZafgrgRuQbNBR62SmrgxqcfBBkpa83tasi93QMR26yJi9go2rVBdTn41xcGpFrSLtmEBwiaL1kd?cluster=devnet) |
-| Guarantor B join | [explorer](https://explorer.solana.com/tx/4e28PX7kBYvLq8GqT6MtdZb46VF9g6J11kJUKnQWW2vdPp9suW3bScLtv5AnhzrAADUoCZe2tSXDYhtkFWyMMAAU?cluster=devnet) |
-| Deposit savings | [explorer](https://explorer.solana.com/tx/nEVmd3sxt3GPDCMp5LKMzSbEdijHLrBrfivDq298NkxbPMKm9sDtSU6oddrZe2Jjjeq5wA9PxQKKJcC2XDKymeT?cluster=devnet) |
-| Request loan | [explorer](https://explorer.solana.com/tx/2U4Xj4Z96Q9R2fuwnJgj2YGGi6rAWq8CZ99PAEniRwC9ms3witedtVH4XamszXaMYaTnF4rzYnS4fYotQRkcaSpc?cluster=devnet) |
-| Co-sign (guarantor A) | [explorer](https://explorer.solana.com/tx/487GaUXDizbkQx189kQ9JerCxBKhJDiR82WxsVnNBV6h35yJKBmyPcEqa2KLmgPTwNp4dYTqDEbjHte3sxxwXYBs?cluster=devnet) |
-| Co-sign + disburse (B) | [explorer](https://explorer.solana.com/tx/5d9rpicU6iWgEbQDYb6oVDemv4Vd6fNnqCF9Q3hEDKx1kiMp8XR7Zx2Edn59eDTerMgabcaMR2H7UK8f58q5s3Ni?cluster=devnet) |
-| Repay loan | [explorer](https://explorer.solana.com/tx/3dHLmTDjhWkPsp3ruWUGqkLea5aazYgHn7siPUSHwycemdeiiwE7LJxP2o9ieRdQisCTdzsWSuGxCfKPPen6Hizp?cluster=devnet) |
-| Exit pool | [explorer](https://explorer.solana.com/tx/4yyvHNjit8M4gEwpWzXBJUAPeyEAVUXsAz4eZsrcLNEHU8CsX5rN8kWQcC8qXYh4TJkpwkuAomhmCr68UYmkG9AV?cluster=devnet) |
+| Program upgrade | [explorer](https://explorer.solana.com/tx/34Cgj2Fc9aE3Jh8br8aMBCvxoeSS5NrFi2gutKPVjRS6kAQvpmoTASJCKnkeAvT6rxdcLgx2LgakYUUs9QbbkYpo?cluster=devnet) |
+| Initialize pool | [explorer](https://explorer.solana.com/tx/5kVVwFn3biEUX4h22pmTi3znSmcKqDJUNemws2YRB2iZiq3bC2p8YpVcreJ9ikYbsq54zFvdrBMJeN3zAXt3ZHNA?cluster=devnet) |
+| Admin join | [explorer](https://explorer.solana.com/tx/5JSVyJrQEkQa8ideCMmPSwBS7XveqWYaEKSf1bw2co8CYKYL8AtUp99xxpVUHpb9ZsznPdyAP8iEtXTRJMAAzg9e?cluster=devnet) |
+| Guarantor A join | [explorer](https://explorer.solana.com/tx/24JpScXb4kPdPVCeZExD5ZtEhi8xoomUq2J9xmSrVNWgFf15PKNKXMEcLxuZW62Z1Mo4vgmGy9b8pu5kWD6R4wkV?cluster=devnet) |
+| Guarantor B join | [explorer](https://explorer.solana.com/tx/41tNYYbQFrNmg4biVcRHoyvEfcUsgAMc1b7ziczrrR1cTWXSd81J8jfDnbtD4ifaJoaKwbacLk5Sfdw6zFT3XVca?cluster=devnet) |
+| Admin deposit savings | [explorer](https://explorer.solana.com/tx/4kTdSiZFVnM6VfyGtoLwohAhX789XEutkXi8DnJpQL3sw7ECk2dh6yZpDqZW1UJx2VE4a4BLNyJFnmzX8UPDqsb7?cluster=devnet) |
+| Guarantor A deposit savings | [explorer](https://explorer.solana.com/tx/63mfzdGYG8Q8J5hMX6AC2hVjs6qPMcdH2mKt3KCbjVCJoQbfVFzuaXgWAHEBcjqnpm5edW3SJnoQyCJrLqzPJyTN?cluster=devnet) |
+| Guarantor B deposit savings | [explorer](https://explorer.solana.com/tx/3ZX3oPbQj3dU2H67TcF74TWC2ogjcNE86kL6s36mA4tdEDQYfn9KxAEK26MhE4NYxdeTQVpx6k6mvvynhfyWbd2V?cluster=devnet) |
+| Request loan | [explorer](https://explorer.solana.com/tx/2yeGsfQ3i53SBbqtTfFtJMZnvDvore7uXMh5Uzv7yRjivrxJVWn39yK2USDqmfYjPwF32vgmcJzZXbPRhUnZFtbV?cluster=devnet) |
+| Co-sign (guarantor A) | [explorer](https://explorer.solana.com/tx/9MgM6uizxiyLb7kii5KCV6dPSJ51rLKoBLsE8VLMtBs1xAh5C4XsGijNxNutSFbKLXtqgSbdhEXLB8vic8hRkK9?cluster=devnet) |
+| Co-sign + disburse (B) | [explorer](https://explorer.solana.com/tx/GoQSDNipyjagWWNEc9GEjuzkMHVJdazJ5c9jdYxibNYZ6U6ob1MYPZZBety9SD4DgRoLCCRk265YnSgbAZt6UY6?cluster=devnet) |
+| Repay loan | [explorer](https://explorer.solana.com/tx/3ScT8xMCXYrVpQEa5pZ55dbViuHiSLTpNM62DMq8s3TBZUXVypJQ9yarWGZFayPxAoe8zHX8paeN512vhB2BQHVU?cluster=devnet) |
+| Exit pool | [explorer](https://explorer.solana.com/tx/346qUXqW2Rja64FFvv61sG1e8RjcRB4CZyXctT2MF5UNbosFXRaxWcoX35sHdATSDoMyVoayLDAFZZmd8oNW4wvC?cluster=devnet) |
 
-**Demo accounts:** pool `4nZf8sPfRvKUucN43FirPQ3T3JvvkCo4LFukGYCRL7tg` · loan `toqwDKpVPAdHPkLSJWyh5yLdDTf7szVEKPRtVNek4bL` · mint `9CsRiEPkagzfTLTDhsBhuvfHNXupBugtHzy1wPefTi4V`
+**0.2.0 demo accounts:** pool `5CFCSvhNdCdGYCAZYcP7taA87vAmKsSLtiHPP8TBWeng` · loan `2LRcvkpTdkNQn5gVpJPEfgj4imkj8bTm5JeEHGvHKZPP` · mint `8GKf5BwMfFEZmkoGYuH4vNwGy1qgdxpSesq6jGp55J7a`
 
 ```bash
 bash scripts/devnet-demo.sh   # full scripted lifecycle
@@ -126,7 +131,7 @@ bash scripts/devnet-demo.sh   # full scripted lifecycle
 
 ### Install
 
-Rust 1.89, Solana CLI 3.x, Anchor 1.0.2, cargo-nextest. Full toolchain notes: [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md).
+Rust stable, Solana CLI 4.x, Anchor CLI 1.1.2, Anchor crates 1.1.2, Solana crates 4.x, cargo-nextest. Full toolchain notes: [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md).
 
 ### Build
 
@@ -159,7 +164,7 @@ Commands grouped by role. Full reference: [docs/CLI.md](docs/CLI.md).
 
 | Role | Commands |
 |------|----------|
-| **Pool administrator** | `pool initialize` · `loan settle-default` |
+| **Pool setup / cranks** | `pool initialize` · permissionless `loan settle-default` |
 | **Members** | `pool join` · `pool deposit` · `pool exit` |
 | **Borrowers** | `loan request` · `loan repay` · `loan cancel` |
 | **Guarantors** | `loan cosign` · `loan withdraw-cosign` |
@@ -224,16 +229,16 @@ Full model: [docs/ACCOUNTING.md](docs/ACCOUNTING.md).
 ## Loan lifecycle
 
 ```
-Pending → Active → Repaid
-                 ↘ Defaulted
+Pending → Active → full repay (loan account closed)
+                 ↘ due default (loan account closed)
 Pending → cancel_loan
 ```
 
 | State | Guarantor tracking | Escape hatches |
 |-------|-------------------|----------------|
-| Pending | `pending_guarantees` | Borrower: `cancel_loan` · Guarantor: `withdraw_cosign` |
-| Active | `active_guarantees` | Repay or admin `settle_default` |
-| Repaid / Defaulted | Cleared | Guarantors may exit when list empty |
+| Pending | `pending_guarantee_count` | Borrower: `cancel_loan` · Guarantor: `withdraw_cosign` |
+| Active | `active_guarantee_count` + loan-local backing | Repay or permissionless `settle_default` after due date |
+| Closed | Counts and backing cleared | Guarantors may exit when obligations are cleared |
 
 ---
 
@@ -250,7 +255,7 @@ Pending → cancel_loan
 ### Off-chain / trusted
 
 - Who may join the pool (workplace policy)
-- Whether a default is justified (admin judgment)
+- Whether a due loan should be cranked as defaulted (off-chain policy)
 - SPL mint legitimacy at pool creation
 
 Full threat model: [docs/SECURITY.md](docs/SECURITY.md).
@@ -261,8 +266,7 @@ Full threat model: [docs/SECURITY.md](docs/SECURITY.md).
 
 ```
 programs/kzp-mini/src/
-├── instructions/   Anchor account constraints
-├── handlers/       CPIs + state updates
+├── instructions/   Anchor account constraints + one handle per instruction
 ├── operations/     Pure business rules (unit-tested)
 ├── state.rs        Pool, Member, Loan
 └── utils/          PDA helpers
@@ -274,7 +278,7 @@ scripts/            ci.sh, deploy.sh, devnet-demo.sh
 keys/               Local keypairs (gitignored)
 ```
 
-**Philosophy:** `instructions` = validation · `handlers` = orchestration · `operations` = testable rules without Anchor contexts.
+**Philosophy:** `instructions` = account validation and orchestration · `operations` = testable rules without Anchor contexts.
 
 ---
 
@@ -283,7 +287,7 @@ keys/               Local keypairs (gitignored)
 | Layer | Coverage |
 |-------|----------|
 | Unit tests | `programs/kzp-mini/src/operations/` |
-| Integration | 46 `solana-program-test` scenarios |
+| Integration | 62 `solana-program-test` scenarios |
 | Specs | BDD criteria in [docs/USE_CASES.md](docs/USE_CASES.md) |
 
 ```bash
@@ -317,14 +321,14 @@ Index: [docs/README.md](docs/README.md).
 
 | Topic | Choice | Implication |
 |-------|--------|-------------|
-| Policy vs code | Eligibility off-chain | Admin can `settle_default` without on-chain proof |
+| Policy vs code | Eligibility/default policy off-chain | Any signer can `settle_default` after `due_ts`; off-chain policy decides when to crank |
 | Single admin | One `pool.admin` | No multisig in this release |
 | Default split | 50/50 (`div_ceil` on odd amounts) | First guarantor pays extra token on odd sums |
 | Loan cap | 3× savings, 5 guarantees | May block edge cases |
 | Ledger vs vault | Both tracked; fail-closed exit/disburse | Safer; monitor for drift |
 | Pending loans | Only borrower can cancel | Abandoned PDAs pay rent until cancelled |
 | Upgrades | No migration instruction | Schema changes need fresh pool deploy |
-| Toolchain | Rust 1.89, Anchor 1.0.2, Solana 3.x | Solana 4.x unsupported |
+| Toolchain | Stable host Rust, Anchor crates 1.1.2, Solana crates 4.x | SBF builds still use Solana's bundled compiler; do not set a workspace `rust-version` above that compiler's support |
 
 ---
 

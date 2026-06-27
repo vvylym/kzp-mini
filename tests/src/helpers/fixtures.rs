@@ -87,13 +87,40 @@ impl TestApp {
         guarantor_b: &Keypair,
         borrower_ata: Pubkey,
     ) -> Pubkey {
-        let ix = self.request_loan(
+        self.activate_loan_with_term(
+            borrower,
+            pool,
+            loan_nonce,
+            amount,
+            guarantor_a,
+            guarantor_b,
+            borrower_ata,
+            super::constants::DEFAULT_LOAN_TERM_SECONDS,
+        )
+        .await
+    }
+
+    /// Requests a loan with a custom term and co-signs until disbursed; returns the loan PDA.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn activate_loan_with_term(
+        &mut self,
+        borrower: &Keypair,
+        pool: Pubkey,
+        loan_nonce: u64,
+        amount: u64,
+        guarantor_a: &Keypair,
+        guarantor_b: &Keypair,
+        borrower_ata: Pubkey,
+        loan_term_seconds: i64,
+    ) -> Pubkey {
+        let ix = self.request_loan_with_term(
             borrower,
             pool,
             loan_nonce,
             amount,
             guarantor_a.pubkey(),
             guarantor_b.pubkey(),
+            loan_term_seconds,
         );
         self.process(&[ix], &[borrower]).await;
         let (loan, _) = loan_pda(&pool, &borrower.pubkey(), loan_nonce);

@@ -2,6 +2,8 @@
 
 use anchor_lang::prelude::*;
 
+use crate::error::PoolError;
+use crate::operations::{GuarantorSlot, clear_pending_guarantee, guarantor_slot};
 use crate::state::{Loan, Member};
 use crate::utils::seeds::MEMBER_SEED;
 
@@ -38,4 +40,25 @@ pub struct WithdrawCosign<'info> {
         constraint = guarantor_b_member.pool == loan.pool,
     )]
     pub guarantor_b_member: Box<Account<'info, Member>>,
+}
+
+/// Revokes the signer's partial co-sign and clears their pending guarantee.
+pub fn handle_withdraw_cosign(ctx: Context<WithdrawCosign>) -> Result<()> {
+    let loan = &mut ctx.accounts.loan;
+    let guarantor_key = ctx.accounts.guarantor.key();
+
+    match guarantor_slot(guarantor_key, loan.guarantor_a, loan.guarantor_b)? {
+        GuarantorSlot::A => {
+            require!(loan.guarantor_a_signed, PoolError::NotCoSigned);
+            loan.guarantor_a_signed = false;
+            clear_pending_guarantee(&mut ctx.accounts.guarantor_a_member)?;
+        }
+        GuarantorSlot::B => {
+            require!(loan.guarantor_b_signed, PoolError::NotCoSigned);
+            loan.guarantor_b_signed = false;
+            clear_pending_guarantee(&mut ctx.accounts.guarantor_b_member)?;
+        }
+    }
+
+    Ok(())
 }
