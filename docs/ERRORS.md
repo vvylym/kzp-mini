@@ -32,6 +32,7 @@ Defined in `programs/kzp-mini/src/error.rs` as `PoolError`.
 | 6025 | NotPoolAdmin | Non-admin default settlement |
 | 6026 | GuarantorInsufficientSavings | Default share exceeds savings ledger |
 | 6027 | GuarantorInsufficientTokens | Default share exceeds guarantor ATA balance |
+| 6028 | PoolNameTooLong | Pool name exceeds 32-byte PDA seed limit |
 
 Anchor assigns base 6000 for custom errors. Verify against the IDL after deploy.
 

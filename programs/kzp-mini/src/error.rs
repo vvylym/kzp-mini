@@ -90,4 +90,7 @@ pub enum PoolError {
     /// Guarantor token ATA balance is below their default settlement share.
     #[msg("Guarantor token balance is insufficient to cover default share")]
     GuarantorInsufficientTokens,
+    /// Pool name exceeds [`crate::constants::MAX_POOL_NAME_LEN`].
+    #[msg("Pool name exceeds maximum supported length")]
+    PoolNameTooLong,
 }

@@ -38,7 +38,10 @@ pub fn handle(ctx: Context<JoinPool>, entry_fee: u64) -> Result<()> {
     member.bump = ctx.bumps.member_account;
 
     let pool = &mut ctx.accounts.pool;
-    pool.total_members += 1;
+    pool.total_members = pool
+        .total_members
+        .checked_add(1)
+        .ok_or(ProgramError::ArithmeticOverflow)?;
 
     Ok(())
 }

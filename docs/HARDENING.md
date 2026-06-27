@@ -13,9 +13,9 @@ Status values:
 
 | Case | Use case | Target behavior | Test file | Initial | Final | Commit |
 |------|----------|-----------------|-----------|---------|-------|--------|
-| H-001 | UC-1 | Pool names longer than the seed-safe maximum are rejected with a program error. | `tests/src/test_initialize_pool.rs` | planned | planned | pending |
-| H-002 | UC-1 | Pool names exactly at the maximum accepted length initialize successfully. | `tests/src/test_initialize_pool.rs` | planned | planned | pending |
-| H-003 | UC-2 | Member count increments use checked arithmetic. | `programs/kzp-mini/src/handlers/join_pool.rs` unit/integration coverage | planned | planned | pending |
+| H-001 | UC-1 | Pool names longer than the seed-safe maximum are rejected before account creation. | `programs/kzp-mini/src/operations/pool_ops.rs` | pass: `cargo test -p kzp-mini pool_name_validation` | green | `fix(pool): validate pool name length` |
+| H-002 | UC-1 | Pool names exactly at the maximum accepted length initialize successfully. | `tests/src/test_initialize_pool.rs` | pass: `cargo test -p kzp-tests initialize_pool_accepts_max_length_name` | green | `fix(pool): validate pool name length` |
+| H-003 | UC-2 | Member count increments use checked arithmetic. | `programs/kzp-mini/src/handlers/join_pool.rs` unit/integration coverage | code review | green | `fix(pool): validate pool name length` |
 | H-004 | UC-3 | A borrower with a pending loan cannot request another loan with a different nonce. | `tests/src/test_request_loan.rs` | planned | planned | pending |
 | H-005 | UC-3 | Canceling a pending loan clears the borrower reservation and permits a new request. | `tests/src/test_request_loan.rs` / `tests/src/test_cancel_loan.rs` | planned | planned | pending |
 | H-006 | UC-4 | Activation cannot overwrite an existing borrower active loan. | `tests/src/test_cosign_loan.rs` | planned | planned | pending |

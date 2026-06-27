@@ -2,13 +2,16 @@
 
 use std::result::Result;
 
-use crate::constants::MIN_POOL_NAME_LEN;
+use crate::constants::{MAX_POOL_NAME_LEN, MIN_POOL_NAME_LEN};
 use crate::error::PoolError;
 
-/// Validates that a pool name meets the minimum length requirement.
+/// Validates that a pool name is within seed-safe length bounds.
 pub fn validate_pool_name(pool_name: &str) -> Result<(), PoolError> {
     if pool_name.len() < MIN_POOL_NAME_LEN {
         return Err(PoolError::PoolNameTooShort);
+    }
+    if pool_name.len() > MAX_POOL_NAME_LEN {
+        return Err(PoolError::PoolNameTooLong);
     }
     Ok(())
 }
@@ -65,6 +68,11 @@ mod tests {
     fn pool_name_validation() {
         assert!(validate_pool_name("ab").is_err());
         assert!(validate_pool_name("abc").is_ok());
+        assert!(validate_pool_name(&"a".repeat(MAX_POOL_NAME_LEN)).is_ok());
+        assert_eq!(
+            validate_pool_name(&"a".repeat(MAX_POOL_NAME_LEN + 1)).unwrap_err(),
+            PoolError::PoolNameTooLong
+        );
     }
 
     #[test]

@@ -1,6 +1,6 @@
 # Use Cases and Acceptance Criteria
 
-BDD-style scenarios. **46 integration tests** in `tests/src/test_*.rs` mirror these specs (see [tests/README.md](../tests/README.md)).
+BDD-style scenarios. **47 integration tests** in `tests/src/test_*.rs` mirror these specs (see [tests/README.md](../tests/README.md)).
 
 ---
 
@@ -24,7 +24,7 @@ BDD-style scenarios. **46 integration tests** in `tests/src/test_*.rs` mirror th
 
 - **Given** a funded admin wallet
 - **When** pool name exceeds the maximum seed-safe length
-- **Then** initialization fails with the pool-name length error
+- **Then** initialization is rejected before account creation
 
 ### Boundary - maximum length name
 

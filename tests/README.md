@@ -16,7 +16,7 @@ Specification and use cases: [../docs/USE_CASES.md](../docs/USE_CASES.md).
 | File | Coverage |
 |------|----------|
 | `helpers/` | See `helpers/mod.rs` - split by responsibility (`app`, `transactions`, `tokens`, `accounts`, `instructions`, `fixtures`) |
-| `test_initialize_pool.rs` | Pool + vault creation, validation |
+| `test_initialize_pool.rs` | Pool + vault creation, name bounds, validation |
 | `test_join_pool.rs` | Entry fee, duplicate member, invalid vault |
 | `test_deposit_savings.rs` | Savings deposits, zero amount |
 | `test_request_loan.rs` | Loan limits, guarantor rules, nonce reuse |
