@@ -7,3 +7,4 @@ test-ledger
 .vscode/
 .cargo/
 keys/**/*.json
+.idea/
