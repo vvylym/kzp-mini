@@ -6,6 +6,7 @@ use anyhow::{Context, Result};
 use kzp_mini::{accounts, instruction, ID as PROGRAM_ID};
 use solana_sdk::{pubkey::Pubkey, signature::Signer, sysvar};
 
+use crate::accounts::fetch_pool;
 use crate::commands::CommandContext;
 use crate::ix::to_sdk_instruction;
 use crate::pda::{member_pda, pool_pda, vault_pda};
@@ -173,15 +174,6 @@ pub fn exit_pool(ctx: &CommandContext, pool_str: &str) -> Result<()> {
 }
 
 pub(crate) fn fetch_mint(ctx: &CommandContext, pool: Pubkey) -> Result<Pubkey> {
-    use anchor_lang::AccountDeserialize;
-    use kzp_mini::state::Pool;
-
-    let account = ctx
-        .client
-        .rpc
-        .get_account(&pool)
-        .context("failed to fetch pool account")?;
-    let pool_state = Pool::try_deserialize(&mut account.data.as_slice())
-        .context("failed to deserialize pool")?;
+    let pool_state = fetch_pool(&ctx.client, &pool)?;
     Ok(Pubkey::new_from_array(pool_state.token_mint.to_bytes()))
 }

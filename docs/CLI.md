@@ -49,6 +49,8 @@ kzp config
 kzp --dry-run pool join --pool <POOL> --entry-fee 50
 ```
 
+When the CLI fetches pool or loan accounts to derive follow-up accounts, it verifies that the fetched account is owned by the `kzp-mini` program before deserializing it.
+
 ## Global flags
 
 | Flag | Description |
