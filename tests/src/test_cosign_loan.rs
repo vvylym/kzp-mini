@@ -1,6 +1,6 @@
 use crate::helpers::{initialized_pool, member_with_savings, TestApp};
 use kzp_mini::state::LoanStatus;
-use kzp_mini::utils::pda::{loan_pda, member_pda};
+use kzp_mini::utils::pda::{loan_pda, member_pda, vault_pda};
 use kzp_mini::PoolError;
 use solana_sdk::{
     pubkey::Pubkey,
@@ -244,6 +244,107 @@ with_universe!(
         let low_member = app.fetch_member(&low_member).await;
         assert_eq!(loan.status, LoanStatus::Pending);
         assert_eq!(low_member.locked_savings, 0);
+        assert_eq!(
+            app.token_balance(&u.borrower_ata).await,
+            borrower_balance_before
+        );
+    }
+);
+
+// Spec: edge - activation cannot overwrite an existing borrower active loan.
+//
+// Given:
+// - A pending loan where guarantor B has co-signed
+// - Borrower's member account has drifted to contain an active loan
+//
+// When:
+// - Guarantor A tries to provide the second co-sign
+//
+// Then:
+// - Activation fails with `ExistingActiveLoan`
+with_universe!(
+    co_sign_loan_fails_when_borrower_active_slot_changed,
+    |app, u| {
+        let loan_key = u.pending_loan(app, 13, 500_000_000).await;
+
+        let ix_b = app
+            .co_sign_loan(&u.guarantor_b, loan_key, u.borrower_ata)
+            .await;
+        app.process(&[ix_b], &[&u.guarantor_b]).await;
+
+        let (borrower_member, _) = member_pda(&u.pool, &u.borrower.pubkey());
+        let mut borrower_state = app.fetch_member(&borrower_member).await;
+        borrower_state.active_loan = Some(Pubkey::new_unique());
+        app.overwrite_member(&borrower_member, &borrower_state)
+            .await;
+
+        let borrower_balance_before = app.token_balance(&u.borrower_ata).await;
+        let ix_a = app
+            .co_sign_loan(&u.guarantor_a, loan_key, u.borrower_ata)
+            .await;
+        app.process_expect_custom_err(&[ix_a], &[&u.guarantor_a], PoolError::ExistingActiveLoan)
+            .await;
+
+        let loan = app.fetch_loan(&loan_key).await;
+        assert_eq!(loan.status, LoanStatus::Pending);
+        assert_eq!(
+            app.token_balance(&u.borrower_ata).await,
+            borrower_balance_before
+        );
+    }
+);
+
+// Spec: edge - insufficient vault liquidity leaves pending state unchanged.
+//
+// Given:
+// - A pending loan where guarantor A has co-signed
+// - The vault SPL balance is lower than the loan principal
+//
+// When:
+// - Guarantor B tries to provide the second co-sign
+//
+// Then:
+// - Activation fails with `InsufficientVaultLiquidity` and no disbursement or liability lock happens
+with_universe!(
+    co_sign_loan_fails_on_insufficient_vault_liquidity,
+    |app, u| {
+        let amount = 1_000_000_000;
+        let loan_key = u.pending_loan(app, 14, amount).await;
+
+        let ix_a = app
+            .co_sign_loan(&u.guarantor_a, loan_key, u.borrower_ata)
+            .await;
+        app.process(&[ix_a], &[&u.guarantor_a]).await;
+
+        let (vault, _) = vault_pda(&u.pool);
+        app.overwrite_token_amount(&vault, amount - 1).await;
+        let borrower_balance_before = app.token_balance(&u.borrower_ata).await;
+
+        let ix_b = app
+            .co_sign_loan(&u.guarantor_b, loan_key, u.borrower_ata)
+            .await;
+        app.process_expect_custom_err(
+            &[ix_b],
+            &[&u.guarantor_b],
+            PoolError::InsufficientVaultLiquidity,
+        )
+        .await;
+
+        let loan = app.fetch_loan(&loan_key).await;
+        let (borrower_member, _) = member_pda(&u.pool, &u.borrower.pubkey());
+        let borrower_member = app.fetch_member(&borrower_member).await;
+        let (ga_member, _) = member_pda(&u.pool, &u.guarantor_a.pubkey());
+        let (gb_member, _) = member_pda(&u.pool, &u.guarantor_b.pubkey());
+        let ga_member = app.fetch_member(&ga_member).await;
+        let gb_member = app.fetch_member(&gb_member).await;
+
+        assert_eq!(loan.status, LoanStatus::Pending);
+        assert!(loan.guarantor_a_signed);
+        assert!(!loan.guarantor_b_signed);
+        assert_eq!(borrower_member.pending_loan, Some(loan_key));
+        assert!(borrower_member.active_loan.is_none());
+        assert_eq!(ga_member.locked_savings, 0);
+        assert_eq!(gb_member.locked_savings, 0);
         assert_eq!(
             app.token_balance(&u.borrower_ata).await,
             borrower_balance_before

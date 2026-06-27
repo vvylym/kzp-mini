@@ -15,7 +15,12 @@ use super::constants::anchor_error_code;
 use super::errors::assert_custom_error;
 impl TestApp {
     pub(super) async fn refresh_blockhash(&mut self) {
-        self.blockhash = self.banks.get_latest_blockhash().await.unwrap();
+        self.context.last_blockhash = self
+            .context
+            .banks_client
+            .get_latest_blockhash()
+            .await
+            .unwrap();
     }
 
     async fn send_transaction(
@@ -24,17 +29,17 @@ impl TestApp {
         extra_signers: &[&Keypair],
     ) -> Result<(), BanksClientError> {
         self.refresh_blockhash().await;
-        // Owned copy so we can hold `&mut self` without also borrowing `self.payer`.
-        let payer = Keypair::try_from(self.payer.to_bytes().as_ref()).unwrap();
+        // Owned copy so we can hold `&mut self` without also borrowing `context.payer`.
+        let payer = Keypair::try_from(self.context.payer.to_bytes().as_ref()).unwrap();
         let mut signers: Vec<&Keypair> = vec![&payer];
         signers.extend_from_slice(extra_signers);
         let tx = Transaction::new_signed_with_payer(
             ixs,
             Some(&payer.pubkey()),
             &signers,
-            self.blockhash,
+            self.context.last_blockhash,
         );
-        self.banks.process_transaction(tx).await
+        self.context.banks_client.process_transaction(tx).await
     }
     /// Signs with the harness payer plus `extra_signers` and expects success.
     pub async fn process(&mut self, ixs: &[Instruction], extra_signers: &[&Keypair]) {
@@ -61,7 +66,7 @@ impl TestApp {
 
     /// Transfers native SOL from the harness payer to `target`.
     pub async fn airdrop_sol(&mut self, target: &Pubkey, amount: u64) {
-        let ix = system_instruction::transfer(&self.payer.pubkey(), target, amount);
+        let ix = system_instruction::transfer(&self.context.payer.pubkey(), target, amount);
         self.process(&[ix], &[]).await;
     }
 }
