@@ -79,6 +79,7 @@ with_universe!(
             app.token_balance(&vault_pda(&u.pool).0).await,
             vault_before + repay
         );
+        app.assert_vault_covers_liquid_savings(&u.pool).await;
     }
 );
 
@@ -123,6 +124,7 @@ with_universe!(
         assert!(!dave_member.active_guarantees.contains(&u.loan));
         assert_eq!(carol_member.locked_savings, 0);
         assert_eq!(dave_member.locked_savings, 0);
+        app.assert_vault_covers_liquid_savings(&u.pool).await;
     }
 );
 

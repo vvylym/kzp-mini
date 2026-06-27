@@ -124,6 +124,7 @@ with_universe!(
         assert!(dave_after.active_guarantees.contains(&loan_key));
         assert_eq!(carol_after.locked_savings, amount / 2);
         assert_eq!(dave_after.locked_savings, amount / 2);
+        app.assert_vault_covers_liquid_savings(&u.pool).await;
     }
 );
 

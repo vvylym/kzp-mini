@@ -44,6 +44,7 @@ with_universe!(initialize_pool_nominal, |app, u| {
     assert_eq!(pool_state.total_savings, 0);
     assert_eq!(pool_state.total_outstanding_loans, 0);
     assert_eq!(app.token_balance(&vault).await, 0);
+    app.assert_vault_covers_liquid_savings(&pool).await;
 });
 
 // Spec: edge - duplicate `initialize_pool` for same PDA fails (Anchor `init` constraint).

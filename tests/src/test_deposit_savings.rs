@@ -43,6 +43,7 @@ with_universe!(deposit_savings_nominal, universe(500_000_000), |app, u| {
 
     assert_eq!(member.savings_balance, 200_000_000);
     assert_eq!(pool_state.total_savings, 200_000_000);
+    app.assert_vault_covers_liquid_savings(&u.pool).await;
 });
 
 // Spec: nominal - repeated deposits accumulate savings balance.

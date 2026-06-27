@@ -76,6 +76,7 @@ with_universe!(settle_default_nominal, |app, u| {
     assert_eq!(ga_member.locked_savings, 0);
     assert_eq!(gb_member.locked_savings, 0);
     assert_eq!(app.token_balance(&vault).await, vault_before);
+    app.assert_vault_covers_liquid_savings(&u.pool).await;
 });
 
 // Spec: edge - odd outstanding amount is split deterministically and reconciles exactly.

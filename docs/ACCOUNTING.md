@@ -20,6 +20,16 @@ KZP Mini tracks two parallel views of pool money: the **SPL vault** (actual toke
 - Credited to the vault but **not** to `member.savings_balance`.
 - Leaves a small **liquidity buffer** for disburse → repay → exit cycles.
 
+## Core invariant
+
+The vault must always cover the liquid savings ledger:
+
+```text
+vault.amount >= pool.total_savings - pool.total_outstanding_loans
+```
+
+Any excess is expected and represents entry-fee buffer or other vault surplus not credited to member savings.
+
 ## Loan limits
 
 - Maximum principal: **3×** borrower `savings_balance` (`MAX_LOAN_MULTIPLIER`).

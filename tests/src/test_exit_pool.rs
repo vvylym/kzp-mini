@@ -40,6 +40,7 @@ with_universe!(exit_pool_nominal, |app, u| {
         app.token_balance(&carol_ata).await,
         balance_before + 2_000_000_000
     );
+    app.assert_vault_covers_liquid_savings(&u.pool).await;
 });
 
 // Spec: edge - under-funded vault exit fails without mutating pool or member state.
