@@ -36,14 +36,10 @@ solana config set --url "$RPC_CLUSTER"
 
 echo "==> Deploying kzp_mini to $RPC_CLUSTER"
 PROGRAM_ID="$(solana address -k "$PROGRAM_KEYPAIR")"
-if solana program show "$PROGRAM_ID" --url "$RPC_CLUSTER" >/dev/null 2>&1; then
-  NO_DNA=1 anchor program deploy --provider.cluster "$RPC_CLUSTER" --max-sign-attempts 200
-else
-  solana program deploy "$ROOT/target/deploy/kzp_mini.so" \
-    --program-id "$PROGRAM_KEYPAIR" \
-    --url "$RPC_CLUSTER" \
-    --max-sign-attempts 200
-fi
+solana program deploy "$ROOT/target/deploy/kzp_mini.so" \
+  --program-id "$PROGRAM_KEYPAIR" \
+  --url "$RPC_CLUSTER" \
+  --max-sign-attempts 200
 
 echo "==> Deploy complete"
 solana program show "$(solana address -k "$ROOT/target/deploy/kzp_mini-keypair.json")"
